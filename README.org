@@ -1,0 +1,16 @@
+#+TITLE: Bachelor Arbeit
+
+#+AUTHOR: Lucas Sas
+#+EMAIL: lucassas@live.de
+#+DATE: August 16, 2020
+#+STARTUP: inlineimages nofold
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+EXPORT_FILE_NAME: docs/index.html
+
+* Description
+Implementation ist zu finden unter: https://github.com/SirBubbls/pruning-framework
+
+** Maintainers
++ @SirBubbls
+* Installation
+* Usage
