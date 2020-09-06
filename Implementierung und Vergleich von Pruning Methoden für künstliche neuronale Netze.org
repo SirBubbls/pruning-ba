@@ -1,0 +1,39 @@
+#+TITLE: Implementierung und Vergleich von Pruning Methoden für künstliche neuronale Netze
+#+AUTHOR: Lucas Sas Brunschier
+#+DESCRIPTION: Bachelor Arbeit
+#+LATEX_CLASS: report
+#+language: de
+#+LATEX_HEADER: \usepackage[ngerman]{babel}
+#+LATEX_HEADER: \usepackage{a4wide}
+#+LATEX_HEADER: \usepackage[backend=bibtex, style=numeric] {biblatex}
+#+LATEX_HEADER: \addbibresource{references.bib}
+#+LATEX_HEADER: \usepackage{acronym}
+#+STARTUP: showall
+
+# Abkürzungsverzeichnis
+#+BEGIN_LATEX
+\newpage
+\listoffigures
+\newpage
+\begin{acronym}[Bash]
+\acro{ANN}{künstliches neuronales Netz}
+\acro{TF}{Tensor Flow}
+\end{acronym}
+\newpage
+#+END_LATEX
+
+* Einleitung
+
+* Methodik
+
+
+* Implementierung
+
+* Ergebnisse
+* Fazit
+* Ausblick
+* Literaturvezeichnis
+#+LATEX: \printbibliography
+
+bibliography:references.bib
+bibliographystyle:apalike
