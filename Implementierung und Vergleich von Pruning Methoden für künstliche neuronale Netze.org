@@ -23,6 +23,74 @@
 #+END_LATEX
 
 * Einleitung
+** Einführung in naive Pruning Methoden für künstliche neuronale Netze
+
+Es lässt sich durch Beobachtung der künstlichen neuronalen Netze der letzten Jahre feststellen,
+dass die Komplexität und die damit einhergehende Anzahl von Neuronen und deren Verbindungen immer weiter zunehmen. cite:altenberger18:_non_techn_survey_deep_convol
+Gleichzeitig werden diese komplexeren und größeren \ac{ANN} Architekturen auch auf schwächeren eingebetteten Geräten eingesetzt.
+Dadurch werden Optimierungen an neuronalen Netzen immer relevanter, da dies Inferenz-Zeit und Modellgröße minimieren kann.
+Verfahren wie Quantisierung können die Laufzeit und den Speicherverbrauch von \ac{ANN}'s deutlich verbessern, jedoch können auch
+Pruning Verfahren massive Verbesserungen versprechen. cite:Frankle2018
+Pruning Verfahren versuchen durch das Entfernen von Verbindungen oder auch ganzen Neuronen, die Sparsity[fn:sparsity] eines Modells zu erhöhen.
+Weight oder auch Connection Pruning bezeichnet den Vorgang Verbindungen aus einem \ac{ANN} zu entfernen.
+Dabei werden die Verbindungen eleminiert, also mit $0$ gewichtet. Die ist in Abbildung ref:fig:naiveweightpruning dargestellt.
+Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimmt, eine Heuristik könnte beispielsweise die niedrigst gewichteten Verbindungen sein.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import keras
+from scripts import prune, quad_plot
+model = keras.models.load_model('./resources/models/iris.h5')
+original_weights = model.get_weights()
+prune(model, 0.75)
+# model.fit(ds.batch(30), epochs=2, steps_per_epoch=5)
+
+layer = 1
+quad_plot(model.get_weights()[0::2][layer], original_weights[0::2][layer], './resources/plots/iris-weight-pruning.png')
+return './resources/plots/iris-weight-pruning.png'
+#+END_SRC
+
+#+LABEL: fig:naiveweightpruning
+#+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
+#+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
+#+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt.
+#+RESULTS[4c513a6df1d1ce045b5ee08a6742bb6708251c8f]:
+[[file:./resources/plots/iris-weight-pruning.png]]
+
+
+Analog zu dem Pruning der Verbindungen existiert auch Neuron-Pruning, also das entfernen ganzer Neuronen und deren Verbindungen aus dem \ac{ANN}.
+Dies wird in Abbildung ref:fig:naiveneuronpruning durch die Visualisierung eines Layers vor und nach Neuron-Pruning gezeigt.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import keras
+import numpy as np
+from scripts import quad_plot
+
+layer= 1
+model = keras.models.load_model('./resources/models/iris.h5')
+original_weights = model.get_weights()
+
+def unit_prune_layer(layer, sparsity):
+    shape = layer.shape
+    layer = np.array(layer)
+    neuron_weights = abs(layer).sum(0)
+
+    layer[:, np.argsort(neuron_weights) < int(len(neuron_weights) * sparsity)] = 0
+
+    return layer.reshape(shape)
+
+pruned = unit_prune_layer(original_weights[0::2][layer], 0.4)
+
+quad_plot(pruned, original_weights[0::2][layer], './resources/plots/iris-unit-pruning.png')
+return './resources/plots/iris-unit-pruning.png'
+#+END_SRC
+
+#+LABEL: fig:naiveneuronpruning
+#+CAPTION: In diesem Beispiel wird das oben verwendete Modell durch eine naive Implementation des Neuron Pruning um einen Faktor von $0.4$ optimiert.
+#+CAPTION: Vertikale Linien repräsentieren in diesem Diagramm die Weights eines Neuronen.
+#+CAPTION: Man kann sehr gut beobachten wie sich ganze Neuronen schwarz färben, also deaktiviert werden.
+#+RESULTS:
+[[file:./resources/plots/iris-unit-pruning.png]]
+
 
 * Methodik
 
