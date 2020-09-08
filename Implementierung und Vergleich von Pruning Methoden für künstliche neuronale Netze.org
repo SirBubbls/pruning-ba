@@ -101,6 +101,29 @@ selbständig fahrenden Autos bietet Pruning Chancen auf enorme Verbesserungen.
 Zudem bietet Pruning eine Möglichkeit, \ac{ANN} Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
 Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modelle einsetzbar machen.
 
+** Ziel dieser Arbeit
+*** Erstellung eines Pruning Frameworks
+Ziel dieser Arbeit ist es primär ein Python Framework zu entwickeln, das mehrere verschiedene Typen von Pruning Methoden implementieren soll.
+Ein wichtiger Fokus sollte bei der Architektur des Framework sein, dies in Zukunft möglichst einfach erweitern zu können.
+Dokumentation der verschiedenen Module ist aus diesem Grund sehr wichtig und sollte im Laufe der Arbeit auch immer aktualisiert werden.
+
+#+begin_src mermaid :file resources/plots/pruning-framework.png :theme forest :background transparent
+graph LR
+    input(Input Model) --> interface(High Level Interface)
+    interface --> parser(Model Parser)
+    pruning(Pruning Engine) --> output(Pruned Model)
+    parser --> pruning
+#+end_src
+
+#+LABEL: fig:rough-project-structure
+#+CAPTION: Der hier gezeigte Graph soll das grobe Konzept, des im Laufe dieser Arbeit entstehenden Pruning Frameworks zeigen.
+#+RESULTS:
+[[file:resources/plots/pruning-framework.png]]
+
+Zudem sollte das Framework kompatibel mit aktueller Deep Learning Software und deren Formate kompatibel sein.
+Kompatibilität mit \ac{TF} [fn:tensorflow]/Keras[fn:keras] steht bei diesem Projekt im Vordergrund, da auch intern \ac{TF} für Trainings-Operationen genutzt wird.
+Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
+
 * Methodik
 
 
@@ -111,6 +134,13 @@ Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modelle einsetzbar mache
 * Ausblick
 * Literaturvezeichnis
 #+LATEX: \printbibliography
+
+* Footnotes
+[fn:sparsity] Sparsity beschreibt die Anzahl von Feldern in einem Tensor, die einer $0$ entsprechen.
+Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes die Sparsity jedes Layers zusammen.
+[fn:tensorflow] Ein von Google entwickeltes Deep Learning Framework [[https://www.tensorflow.org][(tensorflow.org)]].
+[fn:keras] Ehemalig externes Frontend von \ac{TF}, seit \ac{TF} 2.0 fester Bestandteil des Frameworks.
+[fn:onnx] Universales Format für die Persitierung von \ac{ANN} Modellen.
 
 bibliography:references.bib
 bibliographystyle:apalike
