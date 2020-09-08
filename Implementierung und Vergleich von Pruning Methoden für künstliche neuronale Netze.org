@@ -92,6 +92,15 @@ return './resources/plots/iris-unit-pruning.png'
 [[file:./resources/plots/iris-unit-pruning.png]]
 
 
+** Industrierelevanz
+Pruning von künstlichen neuronalen Netzen bietet vielen Unternehmen die Möglichkeit Optimierungen an schon bestehenden \ac{ANN} Modellen vorzunehmen.
+Diese Optimierungen können unter Umständen ermöglichen komplexere Modelle auf schwächeren Computern zu nutzen.
+Beispielsweise eingebettete Geräte können dabei effizienter Daten durch neuronale Netze auswerten.
+Besonders in Situationen in denen das Modell möglichst schnell ein Prognose abgeben soll, wie beispielsweise bei Teilen von
+selbständig fahrenden Autos bietet Pruning Chancen auf enorme Verbesserungen.
+Zudem bietet Pruning eine Möglichkeit, \ac{ANN} Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
+Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modelle einsetzbar machen.
+
 * Methodik
 
 
