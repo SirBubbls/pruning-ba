@@ -39,13 +39,14 @@ Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimm
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
 from scripts import prune, quad_plot
+import sys
+sys.path.append('./condense')
+from condense.optimizer.layer_operations.weight_prune import w_prune_layer
 model = keras.models.load_model('./resources/models/iris.h5')
-original_weights = model.get_weights()
-prune(model, 0.75)
-# model.fit(ds.batch(30), epochs=2, steps_per_epoch=5)
-
 layer = 1
-quad_plot(model.get_weights()[0::2][layer], original_weights[0::2][layer], './resources/plots/iris-weight-pruning.png')
+quad_plot(w_prune_layer(model.get_weights()[0::2][layer], .85),
+          model.get_weights()[0::2][layer],
+          './resources/plots/iris-weight-pruning.png')
 return './resources/plots/iris-weight-pruning.png'
 #+END_SRC
 
@@ -53,7 +54,7 @@ return './resources/plots/iris-weight-pruning.png'
 #+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
 #+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
 #+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt.
-#+RESULTS[4c513a6df1d1ce045b5ee08a6742bb6708251c8f]:
+#+RESULTS[24573ae0da3e8308c793bec20681a90bd4bdf89b]:
 [[file:./resources/plots/iris-weight-pruning.png]]
 
 
@@ -62,25 +63,16 @@ Dies wird in Abbildung ref:fig:naiveneuronpruning durch die Visualisierung eines
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
-import numpy as np
 from scripts import quad_plot
+import sys
+sys.path.append('./condense')
+from condense.optimizer.layer_operations.unit_prune import u_prune_layer
 
 layer= 1
 model = keras.models.load_model('./resources/models/iris.h5')
-original_weights = model.get_weights()
 
-def unit_prune_layer(layer, sparsity):
-    shape = layer.shape
-    layer = np.array(layer)
-    neuron_weights = abs(layer).sum(0)
-
-    layer[:, np.argsort(neuron_weights) < int(len(neuron_weights) * sparsity)] = 0
-
-    return layer.reshape(shape)
-
-pruned = unit_prune_layer(original_weights[0::2][layer], 0.4)
-
-quad_plot(pruned, original_weights[0::2][layer], './resources/plots/iris-unit-pruning.png')
+quad_plot(u_prune_layer(model.get_weights()[0::2][layer], .4),
+          model.get_weights()[0::2][layer], './resources/plots/iris-unit-pruning.png')
 return './resources/plots/iris-unit-pruning.png'
 #+END_SRC
 
@@ -88,7 +80,7 @@ return './resources/plots/iris-unit-pruning.png'
 #+CAPTION: In diesem Beispiel wird das oben verwendete Modell durch eine naive Implementation des Neuron Pruning um einen Faktor von $0.4$ optimiert.
 #+CAPTION: Vertikale Linien repräsentieren in diesem Diagramm die Weights eines Neuronen.
 #+CAPTION: Man kann sehr gut beobachten wie sich ganze Neuronen schwarz färben, also deaktiviert werden.
-#+RESULTS:
+#+RESULTS[46cefe847e97a816605eebe4407161b26d4eded9]:
 [[file:./resources/plots/iris-unit-pruning.png]]
 
 
