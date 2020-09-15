@@ -78,6 +78,7 @@ return './resources/plots/iris-weight-pruning.png'
 #+END_SRC
 
 #+LABEL: fig:naiveweightpruning
+#+CAPTION[Visualisierung von Weight Pruning]:
 #+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
 #+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
 #+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt.
@@ -104,6 +105,7 @@ return './resources/plots/iris-unit-pruning.png'
 #+END_SRC
 
 #+LABEL: fig:naiveneuronpruning
+#+CAPTION[Visualisierung von Unit/Neuron Pruning]:
 #+CAPTION: In diesem Beispiel wird das oben verwendete Modell durch eine naive Implementation des Neuron Pruning um einen Faktor von $0.4$ optimiert.
 #+CAPTION: Vertikale Linien repräsentieren in diesem Diagramm die Weights eines Neuronen.
 #+CAPTION: Man kann sehr gut beobachten wie sich ganze Neuronen schwarz färben, also deaktiviert werden.
@@ -135,7 +137,7 @@ graph LR
 #+end_src
 
 #+LABEL: fig:rough-project-structure
-#+CAPTION: Der hier gezeigte Graph soll das grobe Konzept, des im Laufe dieser Arbeit entstehenden Pruning Frameworks zeigen.
+#+CAPTION[Pruning Framework Konzept (Graph)]: Der hier gezeigte Graph soll das grobe Konzept, des im Laufe dieser Arbeit entstehenden Pruning Frameworks zeigen.
 #+RESULTS:
 [[file:resources/plots/pruning-framework.png]]
 
