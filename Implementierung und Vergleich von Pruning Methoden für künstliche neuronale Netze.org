@@ -47,7 +47,7 @@ die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wi
 
 *** Perceptron <<perceptron>>
 #+LABEL: fig:perceptron
-#+CAPTION[Digramm eines einfachen Perceptrons]: Abbildung eines einfachen Perceptrons. cite:towardsdatascience
+#+CAPTION[Diagramm eines einfachen Perceptrons]: Abbildung eines einfachen Perceptrons. cite:towardsdatascience
 [[./resources/perceptron.png]]
 
 ** Einführung in naive Pruning Methoden für künstliche neuronale Netze
@@ -120,7 +120,7 @@ Beispielsweise eingebettete Geräte können dabei effizienter Daten durch neuron
 Besonders in Situationen in denen das Modell möglichst schnell ein Prognose abgeben soll, wie beispielsweise bei Teilen von
 selbständig fahrenden Autos bietet Pruning Chancen auf enorme Verbesserungen.
 Zudem bietet Pruning eine Möglichkeit, \ac{ANN} Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
-Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modelle einsetzbar machen.
+Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modellen einsetzbar machen.
 
 ** Ziel dieser Arbeit
 *** Erstellung eines Pruning Frameworks
