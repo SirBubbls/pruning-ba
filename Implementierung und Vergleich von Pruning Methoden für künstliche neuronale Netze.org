@@ -9,12 +9,17 @@
 #+LATEX_HEADER: \addbibresource{references.bib}
 #+LATEX_HEADER: \usepackage{acronym}
 #+STARTUP: showall
+#+TOC: tables
 
-# Abkürzungsverzeichnis
+# Abbildungsverzeichnis
 #+BEGIN_LATEX
 \newpage
 \listoffigures
 \newpage
+#+END_LATEX
+
+# Abkürzungsverzeichnis
+#+BEGIN_LATEX
 \begin{acronym}[Bash]
 \acro{ANN}{künstliches neuronales Netz}
 \acro{TF}{Tensor Flow}
@@ -23,6 +28,28 @@
 #+END_LATEX
 
 * Einleitung
+** Neuronale Netze
+*** Historisches
+Obwohl \ac{ANN}'s erst ca. 2008 ihre Blütezeit erreicht haben, ist die zu Grunde liegende Technlogie bereits seit
+Mitte bis Ende des 20. Jahrhunderts bekannt.
+So schuf Frank Rosenblatt im Jahre 1975 das in Abbildung ref:fig:perceptron dargestellte Modell eines Perceptrons cite:werbos1975beyond, eine
+mathematische Abstraktion des aus der Biologie bekannten Neuron.
+Das Perceptron wird bis heute als Modell für ein alleinstehendes Neuron in einem \ac{ANN} verwendet.
+In dem kommenden Kapitel [[perceptron]] wird noch im Detail auf das Modell des Perceptrons eingegangen.
+Der Backpropagation Algorithmus, bei dem es sich um eine Implementation der Kettenregel zur automatischen Differenzierung
+von Parametern eines \ac{ANN} handelt, wurde im Jahre 1986 publiziert cite:Rumelhart_1986.
+Auch heute erweist sich der Backpropagation Algorithmus als eine sehr effiziente Methode die Gradienten[fn:gradient] eines \ac{ANN}'s zu berechnen und
+findet beinahe unverändert Einsatz in verschiedensten modernen Deep Learning Frameworks.
+Eine häufige Fehlinformation die über den Backpropagation Algorithmus verbreitet wird, ist dieser sei für das "Lernen" des neuronalen Netzes
+verantwortlich.
+Dies ist inkorrekt, da eigentlich der Gradient Descent Algorithmus cite:Curry_1944 die von dem Backpropagation berechneten Gradienten nutzt um
+die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wird.
+
+*** Perceptron <<perceptron>>
+#+LABEL: fig:perceptron
+#+CAPTION[Digramm eines einfachen Perceptrons]: Abbildung eines einfachen Perceptrons. cite:towardsdatascience
+[[./resources/perceptron.png]]
+
 ** Einführung in naive Pruning Methoden für künstliche neuronale Netze
 
 Es lässt sich durch Beobachtung der künstlichen neuronalen Netze der letzten Jahre feststellen,
@@ -133,6 +160,9 @@ Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes die Sparsity 
 [fn:tensorflow] Ein von Google entwickeltes Deep Learning Framework [[https://www.tensorflow.org][(tensorflow.org)]].
 [fn:keras] Ehemalig externes Frontend von \ac{TF}, seit \ac{TF} 2.0 fester Bestandteil des Frameworks.
 [fn:onnx] Universales Format für die Persitierung von \ac{ANN} Modellen.
+[fn:loss] Als Loss wird der allgemeine Fehler des Netztes auf einem Datensatz bezeichnet.
+Die Funktion die den Loss berechnet wird Loss Funktion benannt.
+[fn:gradient] Alle Partiellen Ableitungen einer Funktion $f(x_1, \dots, x_n)$ werden als Gradienten $\nabla f = \begin{pmatrix} \frac{\partial f}{\partial x_1} \\ \dots \\ \frac{\partial f}{\partial x_n} \end{pmatrix}$ bezeichnet.
 
 bibliography:references.bib
 bibliographystyle:apalike
