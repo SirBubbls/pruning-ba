@@ -29,6 +29,13 @@
 
 * Einleitung
 ** Neuronale Netze
+#+LABEL: fig:network
+#+CAPTION[Diagramm eines künstlichen neuronalen Netzes]: Diagramm eines fully connected \ac{ANN}, mit einem Hidden Layer (hier blau gekennzeichnet).
+#+CAPTION: Es ist gut zu erkennen, wie benachbarte Schichten
+#+CAPTION: [[https://commons.wikimedia.org/wiki/File:NeuralNetwork.png][[quelle]​]]
+#+ATTR_LATEX: :float wrap :width 8cm :center nil
+[[./resources/neural_network.png]]
+
 *** Historisches
 Obwohl \ac{ANN}'s erst ca. 2008 ihre Blütezeit erreicht haben, ist die zu Grunde liegende Technlogie bereits seit
 Mitte bis Ende des 20. Jahrhunderts bekannt.
@@ -44,6 +51,18 @@ Eine häufige Fehlinformation die über den Backpropagation Algorithmus verbreit
 verantwortlich.
 Dies ist inkorrekt, da eigentlich der Gradient Descent Algorithmus cite:Curry_1944 die von dem Backpropagation berechneten Gradienten nutzt um
 die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wird.
+
+*** Strukturelle Beschaffenheit von neuronalen Netzen
+#+begin_quote
+In diesem Kapitel wird ausschließlich der Aufbau eines fully connected[fn:fullyconnected] feed forward[fn:feedforward] neural networks behandelt.
+#+end_quote
+Ein \ac{ANN} besteht primär aus mehreren Schichten (Layern) $L_1, \dots, L_n$.
+Bei dem ersten Layer $L_1$ handelt es sich um den so genannten Input Layer, der für die Aufnahme von Eingabedaten zuständig ist.
+Analog fungiert dieser als Eingabe-Interface des neuronalen Netzes für den Anwender des \acp{ANN}.
+So erwartet ein Input-Layer mit $8$ Neuronen einen Input Vektor von $8$ Werten.
+Schichten $L_2, \dots, L_{n-1}$ werden als Hidden-Layer des neuronalen Netzes bezeichnet, da diese für den Aussenstehenden nicht direkt einsichtig sind.
+Die letzte Schicht des \acp{ANN}, $L_n$ ist der Output-Layer des Netztes und dient als zweites Interface für den Nutzer.
+In Abbildung ref:fig:network lässt sich die Architektur eines einfachen Feed Forward[fn:feedforward] Networks und dessen Layer klar erkennen.
 
 *** Perceptron <<perceptron>>
 #+LABEL: fig:perceptron
@@ -165,6 +184,8 @@ Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes die Sparsity 
 [fn:loss] Als Loss wird der allgemeine Fehler des Netztes auf einem Datensatz bezeichnet.
 Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:gradient] Alle Partiellen Ableitungen einer Funktion $f(x_1, \dots, x_n)$ werden als Gradienten $\nabla f = \begin{pmatrix} \frac{\partial f}{\partial x_1} \\ \dots \\ \frac{\partial f}{\partial x_n} \end{pmatrix}$ bezeichnet.
+[fn:feedforward] Bei einem Feed Forward Netzwerk fließen die Daten immer linear durch das Netz und werden zu keinem Zeitpunkt an vorherige Schichten geleitet.
+[fn:fullyconnected] Bei einem fully connected \ac{ANN} ist jedes Neuron aus Schicht $L$ mit allen Neuronen der Schicht $L+1$ verbunden.
 
 bibliography:references.bib
 bibliographystyle:apalike
