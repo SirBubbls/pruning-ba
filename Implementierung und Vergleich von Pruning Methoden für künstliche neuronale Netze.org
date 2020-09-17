@@ -100,6 +100,17 @@ Ein Perceptron kann statt in einem grafischen Modell visualisiert zu werden auch
 #+CAPTION: cite:towardsdatascience
 [[./resources/perceptron.png]]
 
+*** Der Datenfluss in einem künstlichen neuronalen Netz
+Daten in einem Feed-Forward \ac{ANN} verlaufen immer linear von Input Layer in Richtung Output-Layer.
+Da bereits in Kapitel ref:perceptron auf die Beschaffenheit eines Layers einegegangen wurde, können wir einen Layer $L$ als eine Funktion $f(x)$ betrachten.
+Da der jeweilige Output eines Layers $L_i$ als der Input des Layers $L_{i+1}$ dient, können wir ein Netzwerk als eine Verkettung an Funktionen betrachten.
+Im Allgemeinen kann dies in der Form eqref:eq:net ausgedrückt werden.
+
+\begin{equation} {f_n(\dots (f_1(x)))=y \ \ \ \label{eq:net} \end{equation}
+
+Die Möglichkeit ein \ac{ANN} als eine Verkettung von Funktionen formulieren zu können ist essentiell um Algorithmen wie Backpropagation zur
+Differenzierung von Parametern nutzen zu können.
+
 ** Einführung in naive Pruning Methoden für künstliche neuronale Netze
 
 Es lässt sich durch Beobachtung der künstlichen neuronalen Netze der letzten Jahre feststellen,
