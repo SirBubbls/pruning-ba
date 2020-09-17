@@ -29,6 +29,12 @@
 
 * Einleitung
 ** Neuronale Netze
+
+Bei dem Forschungsbereich der neuronalen Netzten handelt es sich um eine Teilmenge des Bereichs der künstlichen Intelligenz.
+Genauer lassen sich künstliche neuronale Netze als einen Teil des maschinellen Lernens einordnen.
+Die Inspiration für \acp{ANN} kommt ursprünglich aus der Biologie und der dort vorkommenden neuronalen Verbindungen in Nervensystemen von Lebewesen.
+Jedoch sind die Forschungsgebiete zu neuronalen Netzen aus der Biologie und der Informatik/Mathematik zum Großteil disjunkt.
+
 #+LABEL: fig:network
 #+CAPTION[Diagramm eines künstlichen neuronalen Netzes]: Diagramm eines fully connected \ac{ANN}, mit einem Hidden Layer (hier blau gekennzeichnet).
 #+CAPTION: Es ist gut zu erkennen, wie benachbarte Schichten
