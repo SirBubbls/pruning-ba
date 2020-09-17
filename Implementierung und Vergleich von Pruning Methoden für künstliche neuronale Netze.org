@@ -212,13 +212,52 @@ Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] F
 *** Architektur
 *** Dokumentation
 **** Allgemeine Dokumentation des Projekts
+
+Durch GitHub Pages[fn:pages] und dem Tool Docsify[fn:docsify] ist es sehr einfach möglich eine ausgesprochen zugängliche Dokumentation
+bzw. Landing Page für das Projekt zu generieren.
+Der Inhalt dieser Dokumentation ist manuell erstellt und soll dem Benutzer nur einen groben Überblick über die wichtigsten Aspekte des Frameworks geben.
+Detailliertere Informationen zu internen Schnittstellen können jedoch trotzdem sehr einfach über die Modul Dokumentation aus Unterpunkt ref:pdoc eingesehen werden.
+
 **** Automatisierte Generierung von Dokumentation aus Source Code des Projektes <<pdoc>>
+
+Durch das Tool pdoc3[fn:pdoc] kann aus dem Source Code eines Python Modules und dessen Docstrings[fn:docstring] eine Dokumentation in Form einer
+HTML Seite generiert werden.
+Diese ist in die Allgemeine Dokumentation des Projekts direkt eingebettet und erfordert keine separate Website.
+Da bei der Generierung dieser Dokumentation keine weitere manuelle Arbeit geleistet werden muss, kann diese ohne weitere Umstände automatisiert
+über GitHub Actions[fn:actions] realisiert werden.
+So wird beispielsweise bei einer Änderung des Modules auf dem ~master~ Branch des Projekts ein Script ausgelöst, die eine aktualisierte Dokumentation auf
+der öffentlichen Webseite zur Verfügung stellt.
+Natürlich koaliert die Qualität der generierten Dokumentation direkt mit der Qualität der im Source Code verfassten Docstrings,
+somit ist zudem sicherzustellen, dass auch hier ein gewisser Qualitätsstandart einzuhalten ist.
+Wie dies innerhalb dieses Projekts implementiert wurde wird in Kapitel ref:tests Punkt ref:docstyle_tests genauer erläutert.
+
 *** Tests <<tests>>
 
 
 **** Unit Tests
+
+Um sicherzustellen, dass die Qualität der Software einen gewissen Standard erfüllt, sind Unit Tests mit Sicherheit ein essentieller Bestandteil dieses Projekts.
+Dazu wurde das sehr weit verbreitete Testing Framework pytest[fn:pytest] genutzt.
+Zusätzlich werden Daten über die Test-Coverage der Tests Dank des pytest-cov plugins für pytest generiert.
+
 **** Linting
+
+Um eine ästhetisch ansprechende Formatierung des Quellcodes im Laufe des Projekts beizubehalten.
+Durch das Tool pylint wird auch dies automatisiert möglich mit der Hilfe von GitHub Actions möglich.
+Einige der wichtigsten von der Software überprüften Punkte sind:
+- unnötige ~import~ Statements
+- korrekte Variablennamen
+- Zeichen per Zeile
+- Zeilen-Abstände
+
 **** Docstyle Tests <<docstyle_tests>>
+
+Um auch wichtige Teile wie die Dokumentation von Funktionen nicht im Laufe des Projekts zu vernachlässigen, wurde das Tool pydocstyle[fn:pydocstyle] genutzt um auch
+Docstrings auf Korrektheit zu überprüfen.
+Als Style der Docstrings wurde sich auf den von Google genutzten Styleguide[fn:styleguide] berufen.
+Durch diese Methodik, müssen alle Module, Klassen und Funktionen über Docstrings verfügen, da sie sonst nicht auf einen der nicht-feature branches des Repositories gepullt werden können.
+Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schnittstellen automatisiert generieren.
+
 ** Datensätze
 * Implementierung
 
@@ -240,6 +279,16 @@ Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:gradient] Alle Partiellen Ableitungen einer Funktion $f(x_1, \dots, x_n)$ werden als Gradienten $\nabla f = \begin{pmatrix} \frac{\partial f}{\partial x_1} \\ \dots \\ \frac{\partial f}{\partial x_n} \end{pmatrix}$ bezeichnet.
 [fn:feedforward] Bei einem Feed Forward Netzwerk fließen die Daten immer linear durch das Netz und werden zu keinem Zeitpunkt an vorherige Schichten geleitet.
 [fn:fullyconnected] Bei einem fully connected \ac{ANN} ist jedes Neuron aus Schicht $L$ mit allen Neuronen der Schicht $L+1$ verbunden.
+[fn:pdoc] Open Source Projekt zur Generierung von Dokumentation aus Python Modulen. (https://pdoc3.github.io/pdoc/)
+[fn:docstring] In Python wird ein Kommentar Block, der eine Funktion, Klasse oder ein Modul beschreibt als Docstring bezeichnet.
+[fn:docsify] Framework mit dem Dokumentation in Form einer Web-App aus Markdown Dateien generiert werden kann. (https://docsify.js.org)
+[fn:pages]  Eine von GitHub angebotene Dienstleistung Webseiten durch ein Repository bereitstellen zu können.(https://pages.github.com)
+[fn:actions] Ein Dienst um automatisiert Tests oder Deployment Operationen durchzuführen. (https://github.com/features/actions)
+[fn:pytest] Testing Framework für die Python Programmiersprache. (https://docs.pytest.org/)
+[fn:pydocstyle] Tool um Docstrings eines Python Modules zu überprüfen. (https://github.com/PyCQA/pydocstyle)
+[fn:styleguide] Ein von Google genutzter Styleguide für Python Projekte. (https://google.github.io/styleguide/pyguide.html)
+[fn:pylint] Software um statische Syntax Analyse auf Python Source Code durchzuführen. (https://www.pylint.org)
+[fn:_]
 
 bibliography:references.bib
 bibliographystyle:apalike
