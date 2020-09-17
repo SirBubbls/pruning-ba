@@ -58,7 +58,7 @@ verantwortlich.
 Dies ist inkorrekt, da eigentlich der Gradient Descent Algorithmus cite:Curry_1944 die von dem Backpropagation berechneten Gradienten nutzt um
 die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wird.
 
-*** Strukturelle Beschaffenheit von neuronalen Netzen
+*** Strukturelle Beschaffenheit von neuronalen Netzen <<netstruct>>
 #+begin_quote
 In diesem Kapitel wird ausschließlich der Aufbau eines fully connected[fn:fullyconnected] feed forward[fn:feedforward] neural networks behandelt.
 #+end_quote
@@ -101,7 +101,7 @@ Ein Perceptron kann statt in einem grafischen Modell visualisiert zu werden auch
 [[./resources/perceptron.png]]
 
 *** Der Datenfluss in einem künstlichen neuronalen Netz
-Daten in einem Feed-Forward \ac{ANN} verlaufen immer linear von Input Layer in Richtung Output-Layer.
+Daten in einem Feed-Forward \ac{ANN} verlaufen immer linear von Input-Layer in Richtung Output-Layer.
 Da bereits in Kapitel ref:perceptron auf die Beschaffenheit eines Layers einegegangen wurde, können wir einen Layer $L$ als eine Funktion $f(x)$ betrachten.
 Da der jeweilige Output eines Layers $L_i$ als der Input des Layers $L_{i+1}$ dient, können wir ein Netzwerk als eine Verkettung an Funktionen betrachten.
 Im Allgemeinen kann dies in der Form eqref:eq:net ausgedrückt werden.
@@ -198,17 +198,28 @@ graph LR
 #+end_src
 
 #+LABEL: fig:rough-project-structure
-#+CAPTION[Pruning Framework Konzept (Graph)]: Der hier gezeigte Graph soll das grobe Konzept, des im Laufe dieser Arbeit entstehenden Pruning Frameworks zeigen.
+#+CAPTION[Pruning Framework Konzept]: Der hier gezeigte Graph soll das grobe Konzept, des im Laufe dieser Arbeit entstehenden Pruning Frameworks zeigen.
 #+RESULTS:
 [[file:resources/plots/pruning-framework.png]]
 
 Zudem sollte das Framework kompatibel mit aktueller Deep Learning Software und deren Formate kompatibel sein.
 Kompatibilität mit \ac{TF} [fn:tensorflow]/Keras[fn:keras] steht bei diesem Projekt im Vordergrund, da auch intern \ac{TF} für Trainings-Operationen genutzt wird.
 Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
+*** Erkenntnisse über Pruning Methoden
 
 * Methodik
+** Erstellung des Frameworks
+*** Architektur
+*** Dokumentation
+**** Allgemeine Dokumentation des Projekts
+**** Automatisierte Generierung von Dokumentation aus Source Code des Projektes <<pdoc>>
+*** Tests <<tests>>
 
 
+**** Unit Tests
+**** Linting
+**** Docstyle Tests <<docstyle_tests>>
+** Datensätze
 * Implementierung
 
 * Ergebnisse
