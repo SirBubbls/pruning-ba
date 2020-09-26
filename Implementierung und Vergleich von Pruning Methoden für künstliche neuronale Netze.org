@@ -34,6 +34,7 @@ Bei dem Forschungsbereich der neuronalen Netzten handelt es sich um eine Teilmen
 Genauer lassen sich künstliche neuronale Netze als einen Teil des maschinellen Lernens einordnen.
 Die Inspiration für \acp{ANN} kommt ursprünglich aus der Biologie und der dort vorkommenden neuronalen Verbindungen in Nervensystemen von Lebewesen.
 Jedoch sind die Forschungsgebiete zu neuronalen Netzen aus der Biologie und der Informatik/Mathematik zum Großteil disjunkt.
+cite:10.5555/3086952
 
 #+LABEL: fig:network
 #+CAPTION[Diagramm eines künstlichen neuronalen Netzes]: Diagramm eines fully connected \ac{ANN}, mit einem Hidden Layer (hier blau gekennzeichnet).
@@ -69,6 +70,7 @@ So erwartet ein Input-Layer mit $8$ Neuronen einen Input Vektor von $8$ Werten.
 Schichten $L_2, \dots, L_{n-1}$ werden als Hidden-Layer des neuronalen Netzes bezeichnet, da diese für den Außenstehenden nicht direkt einsichtig sind.
 Die letzte Schicht des \acp{ANN}, $L_n$ ist der Output-Layer des Netztes und dient als zweites Interface für den Nutzer.
 In Abbildung ref:fig:network lässt sich die Architektur eines einfachen Feed Forward[fn:feedforward] Networks und dessen Layer klar erkennen.
+cite:10.5555/3086952
 
 *** Das Perceptron <<perceptron>>
 Ein Perceptron ist ein Modell, das eine Reihe von Eingabedaten (Inputs) $a$ auf einen gemeinsamen Output $y$ nach der Form  $\mathbb{R}^n \rightarrow \mathbb{R}$ abbildet.
@@ -76,6 +78,7 @@ Die verschiedenen Inputs $a^n$ werden durch Gewichtungen $w^n$ verschieden stark
 In heutigen State of the Art Deep Learning Frameworks enthält das Perceptron zusätzlich noch eine nicht-lineare Komponente in der Form einer Aktivierungsfunktion $\sigma$.
 Einige der häufig eingesetzten Aktivierungsfunktionen können in Tabelle ref:tab:aktivierungsfunktion gefunden werden.
 In Kapitel ref:activations dieser Arbeit, wird noch im Genaueren auf Zusammenhänge zwischen Aktivierungsfunktion und Sparsity[fn:sparsity] eines \ac{ANN} Modells eingegangen.
+cite:Rosenblatt_1958
 
 #+LABEL: tab:aktivierungsfunktion
 #+CAPTION[Populäre Aktivierungsfunktionen]: Aktivierungsfunktionen enthalten meist eine nicht-linearität, die nötig ist um neuronale Netze
