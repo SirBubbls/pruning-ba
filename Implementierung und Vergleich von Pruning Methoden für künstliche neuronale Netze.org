@@ -126,7 +126,7 @@ Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimm
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
-from scripts import prune, quad_plot
+from scripts import quad_plot
 import sys
 sys.path.append('./condense')
 from condense.optimizer.layer_operations.weight_prune import w_prune_layer
@@ -143,7 +143,7 @@ return './resources/plots/iris-weight-pruning.png'
 #+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
 #+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
 #+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt.
-#+RESULTS[24573ae0da3e8308c793bec20681a90bd4bdf89b]:
+#+RESULTS[ab87174a1c51a0676afdc27b4d18b3dda9742200]:
 [[file:./resources/plots/iris-weight-pruning.png]]
 
 
@@ -170,7 +170,7 @@ return './resources/plots/iris-unit-pruning.png'
 #+CAPTION: In diesem Beispiel wird das oben verwendete Modell durch eine naive Implementation des Neuron Pruning um einen Faktor von $0.4$ optimiert.
 #+CAPTION: Vertikale Linien repräsentieren in diesem Diagramm die Weights eines Neuronen.
 #+CAPTION: Man kann sehr gut beobachten wie sich ganze Neuronen schwarz färben, also deaktiviert werden.
-#+RESULTS[46cefe847e97a816605eebe4407161b26d4eded9]:
+#+RESULTS[e9612a231390b236029f616c4dcf02b09ad4cd99]:
 [[file:./resources/plots/iris-unit-pruning.png]]
 
 
