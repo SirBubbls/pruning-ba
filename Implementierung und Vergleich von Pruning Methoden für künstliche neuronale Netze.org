@@ -1,6 +1,7 @@
 #+TITLE: Implementierung und Vergleich von Pruning Methoden für künstliche neuronale Netze
 #+AUTHOR: Lucas Sas Brunschier
 #+DESCRIPTION: Bachelor Arbeit
+#+DATE: XX.XX.2020
 #+LATEX_CLASS: report
 #+language: de
 #+LATEX_HEADER: \usepackage[ngerman]{babel}
@@ -11,6 +12,26 @@
 #+STARTUP: showall
 #+TOC: tables
 
+#+begin_src emacs-lisp :exports results :results none :eval export
+  (make-variable-buffer-local 'org-latex-title-command)
+  (setq org-latex-title-command (concat
+     "\\begin{titlepage}\n"
+     "\\begin{center}\n"
+     "\\includegraphics[width=5cm]{./resources/haw_logo.jpg}\n"
+     "\\vspace{2cm}\n"
+     "{\\par \\LARGE Hochschule für angewandte Wissenschaften Landshut}\n"
+     "\\vspace{0.6cm}"
+     "{\\par \\Large Fakultät Informatik} \\vspace{1.2cm}\n"
+     "{\\par \\Huge \\bf Bachelor Arbeit} \\vspace{1cm}\n"
+     "{\\par \\LARGE %t } \\vspace{1cm}\n"
+     "{\\par \\Large \\it von %a} \\vspace{0.2cm}\n"
+     "{\\par Matrikel-Nr.: 1088709} \\vspace{1cm} \n"
+     "{\\par Abgabedatum: %D} \\vspace{3cm}\n"
+     "\\end{center}\n"
+     "{\\par Betreuer: Prof. Dr. Mona Riemenschneider}\n"
+     "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
+     "\\end{titlepage}\n"))
+#+end_src
 # Abbildungsverzeichnis
 #+BEGIN_LATEX
 \newpage
