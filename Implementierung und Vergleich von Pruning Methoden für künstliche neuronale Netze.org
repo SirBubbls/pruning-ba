@@ -54,7 +54,7 @@
 * Einleitung
 ** Neuronale Netze
 
-Bei dem Forschungsbereich der neuronalen Netzten handelt es sich um eine Teilmenge des Bereichs der künstlichen Intelligenz.
+Bei dem Forschungsbereich der neuronalen Netze handelt es sich um eine Teilmenge des Bereichs der künstlichen Intelligenz.
 Genauer lassen sich künstliche neuronale Netze als einen Teil des maschinellen Lernens einordnen.
 Die Inspiration für \acp{ANN} kommt ursprünglich aus der Biologie und der dort vorkommenden neuronalen Verbindungen in Nervensystemen von Lebewesen.
 Jedoch sind die Forschungsgebiete zu neuronalen Netzen aus der Biologie und der Informatik/Mathematik zum Großteil disjunkt.
@@ -259,7 +259,6 @@ somit ist zudem sicherzustellen, dass auch hier ein gewisser Qualitätsstandart 
 Wie dies innerhalb dieses Projekts implementiert wurde wird in Kapitel ref:tests Punkt ref:docstyle_tests genauer erläutert.
 
 *** Tests <<tests>>
-
 
 **** Unit Tests
 
