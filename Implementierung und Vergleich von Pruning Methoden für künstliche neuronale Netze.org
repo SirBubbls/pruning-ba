@@ -297,6 +297,71 @@ Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Model
 Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
 Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
 
+** Iteratives Pruning
+
+*** Sparsity Mask
+Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
+Für iteratives Pruning ist eine Maske zwingend notwendig, da diese beim Refitting angibt, welche Weights geändert werden können. cite:Frankle2018
+Wie Abbildung ref:fig:refitting zeigt, wird durch das Refitting ohne jegliche Maske die Sparsity des Modells zerstört.
+Es ist gut in der rechts-unteren Grafik ersichtlich, wie das Refitting die Gewichtungen innerhalb eines Layers verändert.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import keras
+import tensorflow_datasets as tfds
+sys.path.append('./condense')
+import condense
+
+ds = tfds.load('iris', split='train', shuffle_files=True, as_supervised=True)
+ds = ds.repeat()
+
+model = keras.models.load_model('resources/models/iris.h5')
+layer = 2
+pruning_intensity = 0.8
+
+plt.figure(1, figsize=(10, 5))
+plt.subplot(221)
+
+plt.imshow(model.get_weights()[layer], vmax=1.0, vmin=.0)
+plt.savefig('resources/plots/iterative-1.png')
+plt.title('Weight Matrix eines trainierten Layers \n ohne Pruning Optimierungen')
+
+plt.subplot(222)
+
+plt.imshow((pruned := condense.one_shot(model, pruning_intensity)).get_weights()[layer], vmax=1.0, vmin=.0)
+plt.savefig('resources/plots/iterative-1.png')
+plt.title(f'Weight Matrix des optimierten Layers mit {round(condense.utils.model_utils.calc_model_sparsity(pruned), 4) * 100}% \n Modell Sparsity')
+
+pre_training = pruned.get_weights()[layer]
+
+# Retraining
+plt.subplot(223)
+
+pruned.compile('adam', 'mse')
+pruned.fit(ds.batch(30), epochs=15, steps_per_epoch=100)
+plt.imshow(pruned.get_weights()[layer], vmin=.0, vmax=1.0)
+plt.title(f'Optimiertes Modell nach Refitting ({round(condense.utils.model_utils.calc_model_sparsity(pruned), 4) * 100}% Modell Sparsity)')
+
+# Diff plot
+plt.subplot(224)
+plt.imshow(np.abs(pre_training - pruned.get_weights()[layer]), cmap='binary')
+plt.title('Änderungen der Gewichtungen durch Refitting')
+
+plt.tight_layout()
+
+plt.savefig('resources/plots/iterative-1.png')
+
+return 'resources/plots/iterative-1.png'
+#+END_SRC
+
+#+LABEL: fig:refitting
+#+CAPTION[Weights eines Layers nach refitting]: In dieser Grafik wird der Layer eines Modells,
+#+CAPTION: durch naives Weight und Neuron Pruning optimiert und anschließend durch refitting erneut trainiert.
+#+RESULTS[c22c44c8b060e3dbd8f39ee7440c4dc97136acce]:
+[[file:resources/plots/iterative-1.png]]
+
 * Ergebnisse
 ** Einfluss von Aktivierungs-Funktionen auf Pruning Verfahren <<activations>>
 * Fazit
