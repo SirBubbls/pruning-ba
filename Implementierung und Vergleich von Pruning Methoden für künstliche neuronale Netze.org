@@ -12,6 +12,7 @@
 #+STARTUP: showall
 #+TOC: tables
 
+# Title Page
 #+begin_src emacs-lisp :exports results :results none :eval export
   (make-variable-buffer-local 'org-latex-title-command)
   (setq org-latex-title-command (concat
@@ -32,6 +33,7 @@
      "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
      "\\end{titlepage}\n"))
 #+end_src
+
 # Abbildungsverzeichnis
 #+BEGIN_LATEX
 \newpage
@@ -44,6 +46,7 @@
 \begin{acronym}[Bash]
 \acro{ANN}{künstliches neuronales Netz}
 \acro{TF}{Tensor Flow}
+\acro{ML}{Machine Learning oder zu deutsch maschinellen Lernen}
 \end{acronym}
 \newpage
 #+END_LATEX
@@ -285,6 +288,16 @@ Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schn
 ** Datensätze
 * Implementierung
 
+** Keras/TensorFlow als Backend
+Operationen des neuronalen Netzes wie das Training oder die Evaluierung wird durch das auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
+Dies bietet Nutzern erhebliche Vorteile wie die mögliche Ausführung auf verschiedensten Plattformen wie GPU/CPU oder Hardware Beschleunigern.
+Zudem lassen sich TensorFlow "Layer" eines neuronalen Netzes einfach durch eine öffentliche API erweitern.
+Somit lässt sich im weiteren Verlauf des Projekts eine direkte Integration in das TensorFlow Ökosystem anstreben.
+TensorFlow bietet zusätzlich durch das externe Modul ~model-optimization~[fn:model_opt] Optimierungen an einem Keras/TensorFlow Modell vorzunehmen.
+Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Modell durch die Augmentation von Layern um Pruning Funktionalität erweitert werden kann.
+Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
+Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
+
 * Ergebnisse
 ** Einfluss von Aktivierungs-Funktionen auf Pruning Verfahren <<activations>>
 * Fazit
@@ -312,6 +325,7 @@ Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:pydocstyle] Tool um Docstrings eines Python Modules zu überprüfen. (https://github.com/PyCQA/pydocstyle)
 [fn:styleguide] Ein von Google genutzter Styleguide für Python Projekte. (https://google.github.io/styleguide/pyguide.html)
 [fn:pylint] Software um statische Syntax Analyse auf Python Source Code durchzuführen. (https://www.pylint.org)
+[fn:model_opt] Toolkit für TensorFlow Modell Optimierungen. (https://github.com/tensorflow/model-optimization)
 [fn:_]
 
 bibliography:references.bib
