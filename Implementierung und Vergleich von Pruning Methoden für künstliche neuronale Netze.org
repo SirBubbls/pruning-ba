@@ -284,7 +284,7 @@ Als Style der Docstrings wurde sich auf den von Google genutzten Styleguide[fn:s
 Durch diese Methodik, müssen alle Module, Klassen und Funktionen über Docstrings verfügen, da sie sonst nicht auf einen der nicht-feature branches des Repositories gepullt werden können.
 Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schnittstellen automatisiert generieren.
 
-** Datensätze
+** Datensätze <<datensatz>>
 * Implementierung
 
 ** Keras/TensorFlow als Backend
@@ -297,9 +297,62 @@ Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Model
 Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
 Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
 
-** Iteratives Pruning
+** One-Shot Pruning
+Unter One-Shot Pruning wird verstanden ein bereits trainiertes \ac{ANN} Modell durch eine Pruning Operation einmalig zu manipulieren.
+Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt, also auch keine Datensätze benötigt.
+Nachteile sind jedoch eine deutlich verlustbehafteten Optimierung im Kontrast zu iterativen Pruning (Kapitel ref:iterative).
+Die Implementierung von One-Shot Pruning gestaltet sich im Vergleich mit iterativen Pruning als trivial.
+Es wird eine Maskierungs-Funktion benötigt, um die zu prunenden Felder der Matrix zu ermitteln.
+Eine einfache Maskierungs-Funktion wäre beispielsweise die Auswahl aller Felder, die unter eine festgelegten Threshold $t$ liegen.
+Die durch diese Funktion resultierende Matrix $S$ wird auch Sparsity-Mask (siehe Kapitel ref:sparsity_mask) genannt.
+$$
+\caption{Beispiel: }\ W = \begin{pmatrix} 0.4 && 2 \\ 1.1 && 0\end{pmatrix} \text{ mit } t = 1.0 \Rightarrow S = \begin{pmatrix} 0 && 1 \\ 1 && 0 \end{pmatrix}
+$$
 
-*** Sparsity Mask
+#+BEGIN_SRC python :exports results :results file :cache yes
+import matplotlib.pyplot as plt
+import numpy as np
+w = np.random.random((50,100))
+t = 0.5
+plt.figure(figsize=(15, 3))
+plt.subplot(1, 4, 1)
+plt.imshow(w, vmin=0.0, vmax=1.0)
+plt.title('Source Matrix')
+
+plt.subplot(1, 4, 2)
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=1.0)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.subplot(1, 4, 3)
+t += .1
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=1.0)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.subplot(1, 4, 4)
+t += .1
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=1.0)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.tight_layout()
+plt.savefig('resources/plots/one-shot-random.png')
+return 'resources/plots/one-shot-random.png'
+#+END_SRC
+
+#+LABEL: fig:oneshot
+#+CAPTION[Visualisierung von One Shot Pruning]: Visualisierung von One Shot Pruning mit verschiedenen Thresholds $t$.
+#+CAPTION: Die das Pruning durchführende Operation ~w[w < t] = 0~ setzt alle sich in der Maske ~w < t~ befindenden Felder der Matrix auf $0$.
+#+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-)Funktion ersetzt werden.
+#+RESULTS[4d4296df54d9b9d4b9103dabc59b43cf9a792ad6]:
+[[file:resources/plots/one-shot-random.png]]
+
+In Abbildung ref:fig:oneshot ist ein derartiges triviales Pruning von Feldern aus einer Matrix in visueller Form dargestellt.
+
+** Iteratives Pruning <<iterative>>
+
+*** Sparsity Mask <<sparsity_mask>>
 Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
 Für iteratives Pruning ist eine Maske zwingend notwendig, da diese beim Refitting angibt, welche Weights geändert werden können. cite:Frankle2018
 Wie Abbildung ref:fig:refitting zeigt, wird durch das Refitting ohne jegliche Maske die Sparsity des Modells zerstört.
@@ -361,6 +414,8 @@ return 'resources/plots/iterative-1.png'
 #+CAPTION: durch naives Weight und Neuron Pruning optimiert und anschließend durch refitting erneut trainiert.
 #+RESULTS[c22c44c8b060e3dbd8f39ee7440c4dc97136acce]:
 [[file:resources/plots/iterative-1.png]]
+
+*** Refitting <<refitting>>
 
 * Ergebnisse
 ** Einfluss von Aktivierungs-Funktionen auf Pruning Verfahren <<activations>>
