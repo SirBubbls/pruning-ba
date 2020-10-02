@@ -287,6 +287,42 @@ Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schn
 ** Datensätze <<datensatz>>
 * Implementierung
 
+** Sparsity Mask <<sparsity_mask>>
+
+Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
+Die Sparsity Mask ist ein essentieller Bestandteil für fast jede Pruning Methode.
+Deswegen ist die Klärung dieses Begriffs auch sehr wichtig für kommende Kapitel dieser Arbeit.
+Auswirkungen der Sparsity Mask auf ein Array wird in Abbildung ref:fig:simplesparsity dargestellt.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import numpy as np
+import matplotlib.pyplot as plt
+
+a = np.random.rand(10, 20)
+m = np.random.rand(10, 20) < 0.4
+
+plt.figure(figsize=(10, 2))
+plt.subplot(131)
+plt.imshow(a)
+plt.title('Ursprüngliches Array $a$')
+plt.subplot(132)
+plt.imshow(m*-1, cmap='binary')
+plt.title('Sparsity Mask $m$')
+plt.subplot(133)
+plt.imshow(a*m)
+plt.title('Maske auf Array angewandt $a \\times m$')
+plt.tight_layout()
+plt.savefig('resources/plots/masking.png')
+return 'resources/plots/masking.png'
+#+END_SRC
+
+#+LABEL: fig:simplesparsity
+#+CAPTION[Anwendung von einer Sparsity Mask auf ein einfaches Array]:
+#+CAPTION: In dieser Grafik wird jedes Feld durch weiß ($1$) und schwarz ($0$) binär visualisiert.
+#+CAPTION: Die Multiplikation der Maske $m$ mit dem Array $a$ resultiert in der durch $m$ 'gefilterten' Version des ursprünglichen Arrays $a$.
+#+RESULTS[b489619f2ae1bf26670eaaa816a599d772d79015]:
+[[file:resources/plots/masking.png]]
+
 ** Keras/TensorFlow als Backend
 Operationen des neuronalen Netzes wie das Training oder die Evaluierung wird durch das auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
 Dies bietet Nutzern erhebliche Vorteile wie die mögliche Ausführung auf verschiedensten Plattformen wie GPU/CPU oder Hardware Beschleunigern.
