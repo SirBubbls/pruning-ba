@@ -285,8 +285,15 @@ Durch diese Methodik, müssen alle Module, Klassen und Funktionen über Docstrin
 Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schnittstellen automatisiert generieren.
 
 ** Datensätze <<datensatz>>
-* Implementierung
 
+#+CAPTION: In dieser Arbeit verwendeten Datensätze
+| Datensatz    | Beschreibung | Source                                       |
+|--------------+--------------+----------------------------------------------|
+| Iris Dataset |              | https://archive.ics.uci.edu/ml/datasets/iris |
+| ImageNet     |              | http://www.image-net.org                     |
+| ImageNet V2  |              | https://github.com/modestyachts/ImageNetV2   |
+
+* Implementierung
 ** Sparsity Mask <<sparsity_mask>>
 
 Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
