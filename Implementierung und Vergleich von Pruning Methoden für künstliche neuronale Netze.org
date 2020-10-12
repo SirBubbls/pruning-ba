@@ -242,6 +242,11 @@ Kompatibilität mit \ac{TF} [fn:tensorflow]/Keras[fn:keras] steht bei diesem Pro
 Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
 
 *** Erkenntnisse über Pruning Methoden
+Zudem sollte diese Arbeit durch die Forschung an diversen Pruning Methoden auch neue allgemeine Erkenntnisse hervorbringen.
+Alle Resultate dieser Arbeit sollten klar nachvollziehbar und durch das Lesen dieser Arbeit erkenntlich sein.
+Um Lesern die Resultate dieser Arbeit möglichst nachvollziehbar zu gestalten, werden alle nötigen Dateien dieser Arbeit in Form eines
+GitHub Repositories[fn:github] veröffentlicht.
+Der Quellcode um alle Grafiken/Diagramme und Resultate dieser Arbeit zu erzeugen ist dort zu finden.
 
 * Methodik
 ** Erstellung des Frameworks
@@ -562,6 +567,7 @@ Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 Mathematische Operationen, wie Matrix Multiplikation sind in C implementiert und somit sehr performant. (https://numpy.org)
 [fn:hidden] Schichten eines Modells mit denen der Nutzer keine direkte Interaktion hat, werden als hidden bezeichnet.
 Beispielsweise wären in einem sequentiellen Modell mit $4$ Schichten, Layer $2$ und $3$ hidden.
+[fn:github] https://github.com/sirbubbls/pruning-ba
 [fn:_]
 
 bibliography:references.bib
