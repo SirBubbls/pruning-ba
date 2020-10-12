@@ -48,6 +48,7 @@
 \acro{ANN}{künstliches neuronales Netz}
 \acro{TF}{Tensor Flow}
 \acro{ML}{Machine Learning oder zu deutsch maschinellen Lernen}
+\acro{GPU}{Graphics Processing Unit}
 \end{acronym}
 \newpage
 #+END_LATEX
@@ -136,6 +137,10 @@ Im Allgemeinen kann dies in der Form eqref:eq:net ausgedrückt werden.
 
 \begin{equation} {f_n(\dots (f_1(x)))=y \ \ \ \label{eq:net} \end{equation}
 
+#+BEGIN_QUOTE
+In anderen Layer-Architekturen wie Recurrent oder LSTM ist es durchaus möglich Daten auch an vorherige Layer abzugeben.
+Diese Architekturen sind jedoch nicht Teil dieser Arbeit.
+#+END_QUOTE
 Die Möglichkeit ein \ac{ANN} als eine Verkettung von Funktionen formulieren zu können ist essentiell um Algorithmen wie Backpropagation zur
 Differenzierung von Parametern nutzen zu können.
 
@@ -211,11 +216,13 @@ selbständig fahrenden Autos bietet Pruning Chancen auf enorme Verbesserungen.
 Zudem bietet Pruning eine Möglichkeit, \ac{ANN} Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
 Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modellen einsetzbar machen.
 
-** Ziel dieser Arbeit
-*** Erstellung eines Pruning Frameworks
+** Ziel dieser Arbeit <<ziel>>
+*** Erstellung eines Pruning Frameworks <<ziel_framework>>
 Ziel dieser Arbeit ist es primär ein Python Framework zu entwickeln, das mehrere verschiedene Typen von Pruning Methoden implementieren soll.
 Ein wichtiger Fokus sollte bei der Architektur des Framework sein, dies in Zukunft möglichst einfach erweitern zu können.
 Dokumentation der verschiedenen Module ist aus diesem Grund sehr wichtig und sollte im Laufe der Arbeit auch immer aktualisiert werden.
+Bei dem Design der Nutzer-Schnittstellen sollte auf eine möglichst einfachere und saubere Architektur geachtet werden,
+da auch Nutzer ohne ausgibige Python Erfahrung im Stande sein sollte die Tools dieses Frameworks zu nutzen.
 
 #+begin_src mermaid :file resources/plots/pruning-framework.png :theme forest :background transparent
 graph LR
@@ -233,12 +240,15 @@ graph LR
 Zudem sollte das Framework kompatibel mit aktueller Deep Learning Software und deren Formate kompatibel sein.
 Kompatibilität mit \ac{TF} [fn:tensorflow]/Keras[fn:keras] steht bei diesem Projekt im Vordergrund, da auch intern \ac{TF} für Trainings-Operationen genutzt wird.
 Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
+
 *** Erkenntnisse über Pruning Methoden
 
 * Methodik
 ** Erstellung des Frameworks
 *** Architektur
+
 *** Dokumentation
+
 **** Allgemeine Dokumentation des Projekts
 
 Durch GitHub Pages[fn:pages] und dem Tool Docsify[fn:docsify] ist es sehr einfach möglich eine ausgesprochen zugängliche Dokumentation
@@ -548,6 +558,8 @@ Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:styleguide] Ein von Google genutzter Styleguide für Python Projekte. (https://google.github.io/styleguide/pyguide.html)
 [fn:pylint] Software um statische Syntax Analyse auf Python Source Code durchzuführen. (https://www.pylint.org)
 [fn:model_opt] Toolkit für TensorFlow Modell Optimierungen. (https://github.com/tensorflow/model-optimization)
+[fn:numpy] Numpy ist eine Mathematik Python Bibliothek, die von vielen wissenschaftlichen Modulen genutzt wird.
+Mathematische Operationen, wie Matrix Multiplikation sind in C implementiert und somit sehr performant. (https://numpy.org)
 [fn:hidden] Schichten eines Modells mit denen der Nutzer keine direkte Interaktion hat, werden als hidden bezeichnet.
 Beispielsweise wären in einem sequentiellen Modell mit $4$ Schichten, Layer $2$ und $3$ hidden.
 [fn:_]
