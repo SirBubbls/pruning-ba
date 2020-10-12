@@ -340,6 +340,65 @@ Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Model
 Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
 Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
 
+** Einfaches in Keras integriertes Pruning <<keras_module>>
+Um eine einfache und klare Schnittstelle zu Keras Modellen zu bieten, gibt ~condense~ Nutzern die Möglichkeit
+einzelne Keras Layer an einen Wrapper (~condense.keras.PruningWrapper~) zu übergeben.
+Dieser implementiert Schnittstellen für andere Komponenten des Frameworks.
+Diese werden genutzt um verschiedenste Layer-Manipulationen vornehmen zu können.
+
+#+BEGIN_QUOTE
+Die Hilfsfunktion ~condense.keras.wrap_layer(model, sparsity_function)~ instantiiert ein Modell und augmentiert alle möglichen Layer durch ~PruningWrapper~.
+Für die meisten Use-Cases ist dies der empfohlene Weg Keras Modelle zu augmentieren/optimieren.
+#+END_QUOTE
+
+Dem ~PruningWrapper~ muss zusätzlich eine Sparsity Funktion übergeben werden.
+Diese definiert wie sich das gewünschte Sparsity Ziel im Laufe des Trainings verhalten wird.
+~condense~ stellt einige dieser Funktionen zur Verfügung, bietet aber die Möglichkeit durch die Implementierung
+der abstrakten Klasse ~SparsityFunction~ ein anderes Verhalten zu bestimmen.
+Beispiele für bereits existierende Funktionen sind:
+- ~Constant(t_sparsity)~: Ziel Sparsity bleibt über den kompletten Trainingsprozess konstant
+- ~Linear(t_sparsity)~: Ziel Sparsity nimmt mit laufenden Training bis zu dem letztendlichen Wert ~t_sparsity~ zu
+
+In dem unten gezeigten Code Beispiel wird ein sequentielles Keras Modell mit $4$ Schichten erzeugt.
+Dabei werden Input (Schicht $0$) und Output (Schicht $4$) nicht durch Pruning optimiert.
+Dabei werden die Hidden Layer[fn:hidden] (Schicht $2$ und Schicht $3$) jeweils mit zwei verschiedenen Sparsity Funktionen
+optimiert. Schicht $2$ wird mit einer konstanten Ziel Sparsity von ~0.5~ optimiert und Schicht $3$ mit einer über das Training
+ansteigenden Ziel Sparsity bis zu ~0.7~.
+Bei dem Training (~mode.fit(..., callbacks=[PruningCallback()])~) wird durch den ~PruningWrapper~ automatisch eine entsprechende Pruning Operation durchgeführt.
+
+#+BEGIN_EXAMPLE
+model = keras.models.Sequential(layers=[
+    Dense(20, input_shape=(4,)),
+    PruningWrapper(Dense(10), Constant(0.5)),
+    PruningWrapper(Dense(40), Linear(0.7)),
+    Dense(2)
+])
+#+END_EXAMPLE
+
+Leider ist es durch die Architektur von Keras/TensorFlow notwendig bei dem Trainings-Funktionsaufruf ~.fit()~ auch den
+Callback ~condense.keras.PruningCallback~ zu übergeben.
+Dieser ist intern für die den ~.prune()~ Funktionsaufruf der jeweiligen ~PruningWrapper~ Instanzen verantwortlich.
+
+#+CAPTION[Quellcode Beispiel: Pruning durch Keras Wrapper]:
+#+CAPTION: Einfaches Pruning eines Modells ~model~ durch Pruning des ~condense.keras~ Moduls.
+#+CAPTION:
+#+BEGIN_SRC
+import keras
+import condense
+from condense.keras import wrap_model, PruningCallback
+from condense.optimizer.sparsity_functions import Constant
+
+...
+
+model = keras.models.load_model('...')
+augmented = wrap_model(model, Linear(0.7))
+
+augmented.fit(generator,
+              epochs=10,
+              steps_per_epoch=20,
+              callbacks=[PruningCallback()])
+#+END_SRC
+
 ** One-Shot Pruning
 Unter One-Shot Pruning wird verstanden ein bereits trainiertes \ac{ANN} Modell durch eine Pruning Operation einmalig zu manipulieren.
 Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt, also auch keine Datensätze benötigt.
@@ -488,6 +547,8 @@ Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:styleguide] Ein von Google genutzter Styleguide für Python Projekte. (https://google.github.io/styleguide/pyguide.html)
 [fn:pylint] Software um statische Syntax Analyse auf Python Source Code durchzuführen. (https://www.pylint.org)
 [fn:model_opt] Toolkit für TensorFlow Modell Optimierungen. (https://github.com/tensorflow/model-optimization)
+[fn:hidden] Schichten eines Modells mit denen der Nutzer keine direkte Interaktion hat, werden als hidden bezeichnet.
+Beispielsweise wären in einem sequentiellen Modell mit $4$ Schichten, Layer $2$ und $3$ hidden.
 [fn:_]
 
 bibliography:references.bib
