@@ -49,6 +49,7 @@
 \acro{TF}{Tensor Flow}
 \acro{ML}{Machine Learning oder zu deutsch maschinellen Lernen}
 \acro{GPU}{Graphics Processing Unit}
+\acro{TPU}{Tensor Processing Unit}
 \end{acronym}
 \newpage
 #+END_LATEX
@@ -250,6 +251,24 @@ Der Quellcode um alle Grafiken/Diagramme und Resultate dieser Arbeit zu erzeugen
 
 * Methodik
 ** Erstellung des Frameworks
+Wie bereits in Kapitel ref:ziel_framework eingegangen wurde, sollte bei der Erstellung des Frameworks ein
+großer Fokus auf die zukünftige Erweiterbarkeit liegen.
+Aus diesem Grund wird im Besonderen auf die Architektur, Tests und der Dokumentation sehr viel Wert gelegt.
+
+*** Wahl der Sprache & Frameworks
+Python 3 lag als primäre Programmiersprache nahe, da diese sehr weit in der KI/ML Gemeinschaft verbreitet ist.
+So basieren die meisten Frameworks für neuronale Netze wie Theano, Tensorflow oder Torch auf Python oder einer Implementation in C/C++
+die mit der Hilfe von der CPython Bridge angesprochen werden kann.
+Somit ist eine sehr gute Leistung trotz einfacher API's erreichbar.
+Zudem können in der weiteren Entwicklung dieses Projekt, gewisse Module auf eine performantere Sprache wie C/C++ ausgelagert werden.
+Jedoch sind die meisten rechenaufwendigen Opertionen wie Matrix-Operationen bereits in Frameworks wie ~numpy~[fn:numpy] bereits implementiert.
+
+Eine noch effizienter Methode, die sich besonders bei neuronalen Netzen als eine enorme Leistungssteigerung erwiesen hat,
+ist die Nutzung von \acp{GPU} oder \acp{TPUS} um einen hohen Grad von Parallelisierung erreichen zu können.
+Das Framework ~TensorFlow~[fn:tensorflow] stellt Implementationen von auf \ac{GPU} durchführbaren mathematischen Operationen
+in Form eines Python Interfaces bereit.
+Besonders Matrix Operationen lassen sich meist bestens parallelisieren und Deep Learning besteht zum Großteil aus genau diesen.
+
 *** Architektur
 
 *** Dokumentation
