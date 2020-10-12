@@ -320,13 +320,16 @@ Durch diese Methodik, müssen alle Module, Klassen und Funktionen über Docstrin
 Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schnittstellen automatisiert generieren.
 
 ** Datensätze <<datensatz>>
+Die meisten Datensätze, die in dieser Arbeit verwendet wurden, wurden durch das Python 3 Modul ~tensorflow_datasets~ cite:TFDS bezogen.
+In Tabelle ref:tab:dataset sind alle in dieser Arbeit verwendeten Datensätze gelistet.
 
-#+CAPTION: In dieser Arbeit verwendeten Datensätze
-| Datensatz    | Beschreibung | Source                                       |
-|--------------+--------------+----------------------------------------------|
-| Iris Dataset |              | https://archive.ics.uci.edu/ml/datasets/iris |
-| ImageNet     |              | http://www.image-net.org                     |
-| ImageNet V2  |              | https://github.com/modestyachts/ImageNetV2   |
+#+LABEL: tab:dataset
+#+CAPTION[In dieser Arbeit verwendeten Datensätze]: Eine Liste von, in dieser Arbeit vewendeten Datensätzen.
+| Datensatz                     | Beschreibung | Quelle                                       |
+|-------------------------------+--------------+----------------------------------------------|
+| Iris Dataset cite:fisher36lda |              | https://archive.ics.uci.edu/ml/datasets/iris |
+| ImageNet cite:imagenet_cvpr09                     |              | http://www.image-net.org                     |
+| ImageNet V2                   |              | https://github.com/modestyachts/ImageNetV2   |
 
 * Implementierung
 ** Sparsity Mask <<sparsity_mask>>
