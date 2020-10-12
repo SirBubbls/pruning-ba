@@ -10,6 +10,7 @@
 #+LATEX_HEADER: \addbibresource{references.bib}
 #+LATEX_HEADER: \usepackage{acronym}
 #+STARTUP: showall
+#+STARTUP: hideblocks
 #+TOC: tables
 
 # Title Page
