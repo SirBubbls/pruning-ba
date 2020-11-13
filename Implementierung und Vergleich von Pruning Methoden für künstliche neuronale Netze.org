@@ -1177,7 +1177,7 @@ model = keras.models.load_model(...)  # keras model
 pruned = condense.one_shot(model, 0.9)  # 90% target sparsity
 #+END_SRC
 
-*** Iris Dataset
+*** Iris Dataset <<one_shot_iris>>
 #+begin_quote
 Bei diesem Modell handelt es sich um ein eigens auf den Iris Datensatz (Kapitel ref:datensatz) trainiertes Dense \ac{ANN}.
 #+end_quote
@@ -1224,6 +1224,28 @@ return 'resources/plots/iris-accuracy-1.png'
 [[file:resources/plots/iris-accuracy-1.png]]
 
 *** Convolutional Model
+In diesem Beispiel wird ein Convolutional Model durch immer stärkeres One-Shot Pruning optimiert.
+Das Modell umfasst deutlich mehr Parameter als das Dense Modell aus Kapitel ref:one_shot_iris.
+Aus der Abbildung ref:fig:mnist-results-one-shot ist zu entnehmen, dass sich die Test-Accuracy des Modells bis zu einer Parameter-Sparsity von $40\%$ kaum negativ verändert.
+Daraus lässt sich die relativ niedrige Informationsdichte des Modells schlussfolgern.
+Wie bereits angesprochen, eignen sich genau diese Modelle für Pruning Optimierungen deutlich besser, als informationsdichtere Modelle.
+In dem in Abbildung ref:src:one-shot-mnist gezeigten Quellcodeausschnitt,
+ist das One-Shot Interface des PyTorch Kompatibilitätsmodul gezeigt (Kapitel ref:pytorch).
+Anzumerken ist dabei das Konstruktor Argument ~ignored_params~,
+bei dem spezifiziert wird die letzte Schicht des Modells (also der Output Layer) nicht zu prunen.
+Das Argument ~apply_mask=True~ sorgt für die sofortige Anwendung der generierten Maske und nimmt somit One-Shot Pruning vor.
+
+#+LABEL: src:one-shot-mnist
+#+CAPTION: One-Shot Pruning eines Torch Models durch den ~condense.torch.PruningAgent~
+#+BEGIN_SRC
+model = ...  # pytorch model
+pruned = PruningAgent(model,
+                      Constant(0.7),
+                      # generierte maske wird direkt angewandt
+                      apply_mask=True,
+                      ignored_params=[list(model.parameters())[-1]])
+#+END_SRC
+
 #+BEGIN_SRC python :exports results :results file :cache yes
 import torch
 import torch.nn as nn
@@ -1294,7 +1316,7 @@ return 'resources/plots/conv_one_shot.png'
 #+END_SRC
 
 #+LABEL: fig:mnist-results-one-shot
-#+CAPTION: Convolutional Model Accuracy mit zunehmender Pruning Stärke.
+#+CAPTION[One-Shot Pruning Accuracy eines Convolutional Modells]: Convolutional Model Accuracy mit zunehmender Pruning Stärke.
 #+RESULTS[3d38d99a1f6c222d7f832659b987956c2f75d35f]:
 [[file:resources/plots/conv_one_shot.png]]
 
