@@ -1218,7 +1218,8 @@ return 'resources/plots/iris-accuracy-1.png'
 #+END_SRC
 
 #+LABEL: fig:iris-results-one-shot
-#+CAPTION: Dense Model Accuracy mit zunehmender Pruning Stärke.
+#+CAPTION[One-Shot Pruning Accuracy eines Dense Modells]: Dense Model Accuracy mit zunehmender Pruning Stärke.
+#+ATTR_LaTeX: :height 5cm :placement [!htpb]
 #+RESULTS[05bfe488e6deb3369cdd62e1398ff7fdb1ac4f60]:
 [[file:resources/plots/iris-accuracy-1.png]]
 
