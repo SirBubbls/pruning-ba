@@ -1,3 +1,4 @@
 [submodule "condense"]
 	path = condense
 	url = git@github.com:SirBubbls/condense.git
+	branch = dev

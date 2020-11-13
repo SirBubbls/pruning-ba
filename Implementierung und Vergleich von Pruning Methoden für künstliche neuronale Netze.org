@@ -24,7 +24,7 @@
      "{\\par \\LARGE Hochschule für angewandte Wissenschaften Landshut}\n"
      "\\vspace{0.6cm}"
      "{\\par \\Large Fakultät Informatik} \\vspace{1.2cm}\n"
-     "{\\par \\Huge \\bf Bachelor Arbeit} \\vspace{1cm}\n"
+     "{\\par \\Huge \\bf Bachelor Thesis} \\vspace{1cm}\n"
      "{\\par \\LARGE %t } \\vspace{1cm}\n"
      "{\\par \\Large \\it von %a} \\vspace{0.2cm}\n"
      "{\\par Matrikel-Nr.: 1088709} \\vspace{1cm} \n"
@@ -245,16 +245,23 @@ auf die absoluten Gewichtung jeder Verbindung bezieht.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
-from scripts import quad_plot
 import sys
+import matplotlib.pyplot as plt
 sys.path.append('./condense')
 from condense.optimizer.layer_operations.unit_prune import u_prune_layer
 
 layer= 1
 model = keras.models.load_model('./resources/models/iris.h5')
-
-quad_plot(u_prune_layer(model.get_weights()[0::2][layer], .4),
-          model.get_weights()[0::2][layer], './resources/plots/iris-unit-pruning.png')
+unit_pruned = u_prune_layer(model.get_weights()[0::2][layer], (t := .4))
+plt.figure(figsize=(10, 3))
+plt.subplot(121)
+plt.title('Weights des zu prunenden Layers')
+plt.imshow(abs(model.get_weights()[0::2][layer]), cmap='inferno', vmin=0)
+plt.subplot(122)
+plt.title(f'Weights des geprunten Layers ({t*100}% Sparsity)')
+plt.imshow(abs(unit_pruned), cmap='inferno', vmin=0)
+plt.tight_layout()
+plt.savefig('./resources/plots/iris-unit-pruning.png')
 return './resources/plots/iris-unit-pruning.png'
 #+END_SRC
 
@@ -496,10 +503,12 @@ In Tabelle ref:tab:dataset sind alle in dieser Arbeit verwendeten Datensätze ge
 | MNIST cite:lecun-gradientbased-learning-applied-1998 |              | http://yann.lecun.com/exdb/mnist/            |
 
 * Implementierung
-** Sparsity Mask <<sparsity_mask>>
 
+** Sparsity Mask <<sparsity_mask>>
 Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
-Die Sparsity Mask ist ein essentieller Bestandteil für fast jede Pruning Methode.
+In anderen Worten maskiert der Sparsity Tensor die Parameter Tensoren eines Modells.
+Die Sparsity Mask ist ein essentieller Bestandteil für fast jede Pruning Methode und bei der Implementierung dreht es sich primär darum,
+diese Maske effizient anzuwenden und zu generieren.
 Deswegen ist die Klärung dieses Begriffs auch sehr wichtig für kommende Kapitel dieser Arbeit.
 Auswirkungen der Sparsity Mask auf ein Array wird in Abbildung ref:fig:simplesparsity dargestellt.
 
@@ -528,21 +537,400 @@ return 'resources/plots/masking.png'
 #+LABEL: fig:simplesparsity
 #+CAPTION[Anwendung von einer Sparsity Mask auf ein einfaches Array]:
 #+CAPTION: In dieser Grafik wird jedes Feld durch weiß ($1$) und schwarz ($0$) binär visualisiert.
-#+CAPTION: Die Multiplikation der Maske $m$ mit dem Array $a$ resultiert in der durch $m$ 'gefilterten' Version des ursprünglichen Arrays $a$.
+#+CAPTION: Die Multiplikation der Maske $m$ mit dem Array $a$ resultiert in der durch $m$ maskierte Version des ursprünglichen Arrays $a$.
 #+RESULTS[b489619f2ae1bf26670eaaa816a599d772d79015]:
 [[file:resources/plots/masking.png]]
 
-** Keras/TensorFlow als Backend
-Operationen des neuronalen Netzes wie das Training oder die Evaluierung wird durch das auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
-Dies bietet Nutzern erhebliche Vorteile wie die mögliche Ausführung auf verschiedensten Plattformen wie GPU/CPU oder Hardware Beschleunigern.
-Zudem lassen sich TensorFlow "Layer" eines neuronalen Netzes einfach durch eine öffentliche API erweitern.
-Somit lässt sich im weiteren Verlauf des Projekts eine direkte Integration in das TensorFlow Ökosystem anstreben.
-TensorFlow bietet zusätzlich durch das externe Modul ~model-optimization~[fn:model_opt] Optimierungen an einem Keras/TensorFlow Modell vorzunehmen.
-Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Modell durch die Augmentation von Layern um Pruning Funktionalität erweitert werden kann.
-Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
-Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
+Bei der Implementierung der Pruning Operation bieten sich primär zwei Zeitpunkte während des Trainings an,
+an denen dies Sparsity Maske angewandt werden kann.
+1. Nach jedem Schritt des Optimizers, werden die maskierten Felder wieder auf $0$ zurückgesetzt.
+2. Die Parameter werden zur Initialisierung einmal maskiert.
+   Daraufhin werden ausschließlich die Gradienten maskiert um somit die Parameter Sparsity beizubehalten.
 
-** Einfaches in Keras integriertes Pruning <<keras_module>>
+~condense~ verwendet beide dieser Ansätze um die gewünschte Sparsity eines Modells zu erzielen.
+
+** ~condense~ Modul
+Wie in Kapitel ref:ziel erwähnt ist auch die Erstellung eines Python Frameworks ein großer Teil dieser Arbeit.
+Das englische Wort /condense/ (zu Deutsch /kondensieren/ oder auch /verdichten/) beschreibt die Operation des Prunings von neuronalen Netzen sehr gut,
+da Teile des Netzes gelöscht, bzw. verdichtet werden.
+
+*** Struktur
+Eine klare und einfach verständliche Strukturierung der Schnittstellen ist (wie in Kapitel ref:ziel_framework beschrieben) ein wichtiges
+Ziel dieser Arbeit.
+Die grobe Struktur des ~condense~ Moduls wird in Abbildung ref:fig:condense_structure dargestellt.
+In folgenden Kapiteln werden die einzelnen Untermodule dieses Projekts genauer erläutert.
+
+#+BEGIN_SRC mermaid :file resources/plots/condense-module.png :theme forest :background transparent :cache yes
+graph TD
+    condense --- keras
+    condense --- torch
+    condense --- optimizer
+    condense --- utils
+    condense -.- compressor
+    condense --- o_shot(one_shot)
+    keras --- prune_model(prune_model)
+    utils --- model_utils
+    utils --- layer_utils
+    optimizer --- one_shot(one_shot)
+#+END_SRC
+
+#+LABEL: fig:condense_structure
+#+CAPTION[Condense Modul Architektur]: Diagram des Python Moduls ~condense~ und dessen Untermodule.
+#+CAPTION: Funktionen/Methoden sind hierbei mit abgerundeten Kanten visualisiert und Module/Klassen mit scharfen Kanten.
+#+RESULTS[599357935a3a84530721237a8f915f8496c0ccec]:
+[[file:resources/plots/condense-module.png]]
+
+**** Keras Kompatibilitäts-Modul (~condense.keras~)
+
+Um eine direkte Integration in das Keras Machine Learning Framework bieten zu können, existiert im Umfang dieses Moduls ein Keras/\ac{TF} kompatibles Sub-Module.
+Dieses Nutzt im Vergleich zum im Punkt ref:optimization_module beschriebenen Optimierungs-Modul keine ~numpy~[fn:numpy] Arrays sondern \ac{TF} Tensoren.
+Die Implementation von Pruning Methoden als TensorFlow Tensoren bietet die Möglichkeit diese auf \acp{GPU} ausführen zu können,
+was einen enormen Leistungszuwachs mit sich bringt.
+Jedoch verursacht die Arbeit mit \ac{TF} Tensoren auch deutlich mehr Aufwand bei der Implementation.
+In Kapitel ref:keras_module wird noch genauer auf die Methodik hinter diesem Modul eingegangen.
+
+**** Torch (PyTorch) Kompatibilitäts-Modul (~condense.torch~)
+
+Das zweite von ~condense~ unterstützte Framework ist PyTorch (o.a. Torch).
+Ähnlich wie das Keras Kompatibilitäts-Modul, werden Network Operationen dadurch auf GPU's oder TPU's durchgeführt.
+In Kapitel ref:pytorch wird noch näher auf die PyTorch spezifische Implementation eingegangen.
+
+**** Optimierungs-Modul (~condense.optimizer~) <<optimization_module>>
+
+Dieses Modul stellt Pruning Implementationen für ~numpy~[fn:numpy] Arrays bereit.
+Bei dir Implementierung wurde besonders auf die Utilisation von ~numpy~ Methoden Wert gelegt um best mögliche Leistung zu erreichen.
+Teilweise werden auch Sequenzielle ~keras~ Modelle von der API unterstützt,
+wobei für nähere Informationen auf die Dokumentation verwiesen werden sollte: https://sirbubbls.github.io/condense/#/pdoc/condense/optimizer/index.html.
+
+**** Utils (~condense.utils~)
+
+Dieses Submodule soll Nutzern eine Hand voll nützlicher Tools bereitstellen, beispielsweise die Berechnung der Sparsity eines Layers.
+
+**** Modul zur Kompression von optimierten Modellen (~condense.compressor~)
+
+Um Modelle in einer effizienten Form zu speichern und in den Arbeitsspeicher laden zu können muss dieses auch komprimiert werden.
+In Zukunft soll dies in Form dieses Sub-Modules realisiert werden, jedoch ist dies nicht Ziel dieser Arbeit.
+*** Installation
+Natürlich ist es enorm wichtig, wie potentielle Nutzer das ~condense~ Modul installieren können.
+Da das Projekt unter einem öffentlichen GitHub Repository[fn:gh_condense] entwickelt wird, können Nutzer durch einfaches herunterladen des
+Repositories sich Zugang zu Implementationen gewähren.
+Durch das Python Modul ~pip~[fn:pip], ein Module Management System für Python, ist es einfach möglich Module aus dem öffentlichen PyPi[fn:pypi]
+Repository herunterladen und zu installieren.
+Module und deren Versionen müssen jeweils bei einer neuen Version neu eingereicht werden.
+Dies ist durch GitHub Actions Framework automatisierbar indem durch Änderungen des Master Branches eine Veröffentlichung
+ausgelöst wird, vorausgesetzt es werden alle Tests des Moduls erfolgreich ausgeführt.
+
+#+begin_quote
+Eine Installation durch ~pip~ ist durch das Kommando: ~pip install condense~ möglich.
+#+end_quote
+
+** One-Shot Pruning <<one-shot>>
+Die wohl trivialste Methode Parameter eines \ac{ANN} Modells prunen, ist ein sogenanntes One-Shot Pruning Verfahren zu anzuwenden.
+Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt, also auch keine Datensätze benötigt.
+Nachteile sind jedoch eine deutlich verlustbehafteten Optimierung im Kontrast zu iterativen Pruning (Kapitel ref:iterative).
+Die Implementierung von One-Shot Pruning gestaltet sich im Vergleich mit iterativen Pruning als trivial.
+Es wird eine Maskierungs-Funktion benötigt, um die zu prunenden Felder der Matrix zu ermitteln.
+Eine einfache Maskierungs-Funktion wäre beispielsweise die Auswahl aller Felder, die unter eine festgelegten Threshold $t$ liegen.
+Die durch diese Funktion resultierende Matrix $S$ wird auch Sparsity-Mask (siehe Kapitel ref:sparsity_mask) genannt.
+$$
+W = \begin{pmatrix} 0.4 && 2 \\ 1.4 && 0\end{pmatrix} \text{ mit } t = 1.0 \Rightarrow S = \begin{pmatrix} 0 && 1 \\ 1 && 0 \end{pmatrix}
+$$
+In Abbildung ref:fig:oneshot ist ein derartiges triviales Pruning von Feldern aus einer Matrix in visueller Form dargestellt.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import matplotlib.pyplot as plt
+import numpy as np
+w = np.random.random((50,100))
+t = 0.5
+plt.figure(figsize=(15, 3))
+plt.subplot(1, 4, 1)
+plt.imshow(w, vmin=0.0, vmax=.4)
+plt.title('Source Matrix')
+
+plt.subplot(1, 4, 2)
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=.4)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.subplot(1, 4, 3)
+t += .4
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=.4)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.subplot(1, 4, 4)
+t += .4
+w[w < t] = 0
+plt.imshow(w, vmin=0.0, vmax=.4)
+plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
+
+plt.tight_layout()
+plt.savefig('resources/plots/one-shot-random.png')
+return 'resources/plots/one-shot-random.png'
+#+END_SRC
+
+#+LABEL: fig:oneshot
+#+CAPTION[Visualisierung von One Shot Pruning]: Visualisierung von One Shot Pruning mit verschiedenen Thresholds $t$.
+#+CAPTION: Die das Pruning durchführende Operation ~w[w < t] = 0~ setzt alle sich in der Maske ~w < t~ befindenden Felder der Matrix auf $0$.
+#+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-)Funktion ersetzt werden.
+#+RESULTS[21ff15ac885246e704d3550b609f135c8edfd96e]:
+[[file:resources/plots/one-shot-random.png]]
+
+Das Modul ~condense~ bietet dabei mehrere verschiedene Implementationen und Schnittstellen für Nutzer um Datenstrukturen zu prunen.
+Die universellste Methode One-Shot Pruning auf Tensoren durchzuführen, ist die ~condense.optimizer.layer_operations~ API zu nutzen.
+Diese erlaubt Pruning auf ~numpy.ndarrays~ durchzuführen.
+
+#+BEGIN_SRC
+model = keras.models.load_model('...')
+pruned = condense.optimizer.one_shot(model, 0.75)
+#+END_SRC
+
+** Iteratives Pruning <<iterative>>
+Das in Kapitel ref:one-shot angesprochene One-Shot Pruning-Verfahren, verursacht einen signifikanten Verlust von Modell Accuracy.
+Jedoch lässt sich  One-Shot Pruning einfach in ein iteratives Pruning-Verfahren umwandeln.
+
+*** Refitting <<refitting>>
+Nach dem Pruning eines Modells kann dieses erneut trainiert werden, somit kann sich das Modell an die manipulierten Parameter adjustieren.
+Es ist jedoch zwingend notwendig die Sparsity Mask (Kapitel ref:sparsity_mask) der jeweiligen Layer zu speichern,
+da diese auf die Parameter nach dem Training angewandt werden muss cite:Frankle2018.
+Was passiert wenn dies nicht gemacht wird, zeigt Abbildung ref:fig:refitting.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import keras
+import tensorflow_datasets as tfds
+sys.path.append('./condense')
+import condense
+
+ds = tfds.load('iris', split='train', shuffle_files=True, as_supervised=True)
+ds = ds.repeat()
+
+model = keras.models.load_model('resources/models/iris.h5')
+layer = 2
+pruning_intensity = 0.8
+
+plt.figure(1, figsize=(10, 5))
+plt.subplot(221)
+
+plt.imshow(model.get_weights()[layer], vmax=.4, vmin=.0)
+plt.savefig('resources/plots/iterative-1.png')
+plt.title('Weight Matrix eines trainierten Layers \n ohne Pruning Optimierungen')
+
+plt.subplot(222)
+
+plt.imshow((pruned := condense.one_shot(model, pruning_intensity)).get_weights()[layer], vmax=.4, vmin=.0)
+plt.savefig('resources/plots/iterative-1.png')
+plt.title(f'Weight Matrix des optimierten Layers mit {round(condense.utils.model_utils.calc_model_sparsity(pruned) * 100, 2)}% \n Modell Sparsity')
+
+pre_training = pruned.get_weights()[layer]
+
+# Retraining
+plt.subplot(223)
+
+pruned.compile('adam', 'mse')
+pruned.fit(ds.batch(30), epochs=15, steps_per_epoch=50)
+plt.imshow(pruned.get_weights()[layer], vmin=.0, vmax=.4)
+plt.title(f'Optimiertes Modell nach Refitting ({round(condense.utils.model_utils.calc_model_sparsity(pruned) * 100, 2)}% Modell Sparsity)')
+
+# Diff plot
+plt.subplot(224)
+plt.imshow(np.abs(pre_training - pruned.get_weights()[layer]), cmap='binary')
+plt.title('Änderungen der Gewichtungen durch Refitting')
+
+plt.tight_layout()
+plt.savefig('resources/plots/iterative-1.png')
+
+return 'resources/plots/iterative-1.png'
+#+END_SRC
+
+#+LABEL: fig:refitting
+#+CAPTION[Weights eines Layers nach refitting]: In dieser Grafik wird der Layer eines Modells,
+#+CAPTION: durch naives Weight und Neuron Pruning optimiert und anschließend durch Refitting erneut trainiert.
+#+CAPTION: Durch das Refitting ohne Sparsity Maske wird die Sparsity des Modells von ca. $77\%$ auf fast $0\%$ geändert.
+#+CAPTION: Änderungen die durch das Refitting verursacht werden, sind in der rechts-unteren Abbildung visualisiert.
+#+RESULTS[585ffcab6c0d18d41ee6c9266eae6f62449f73e8]:
+[[file:resources/plots/iterative-1.png]]
+
+** Implementierung der Lottery Ticket Hypothesis <<lottery_ticket>>
+Der durch Jonathan Frankle und Michael Carbin publizierte Artikel
+"The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks"cite:Frankle2018,
+beschreibt eine Methode ein bereits gepruntes Modell zu trainieren um ein schnelleres Training zu ermöglichen.
+
+Dabei wird folgende Prozedur vorgeschlagen:
+1. Initialisieren und Speichern aller Parameter des Modells
+2. Trainieren des Modells
+3. Prunen dieses Modells und Speichern der Layer Masken
+4. Reinitialisieren des Modells durch die in Schritt 1 gespeicherten Parameter
+5. Anwendung der durch das Prunen generierten Sparsity Masken
+6. Erneutes trainieren des Modells unter Berücksichtigung der Sparsity Maske
+
+Durch dieses Verfahren ist es möglich nicht nur kleinere Modelle schneller und effizienter zu trainieren, sondern auch eine allgemein bessere
+Test-Accuracy des Netzes zu erreichen.
+Besonders gefördert wird dadurch das Generalisierungspotential des Netzes.
+
+*** Beispiele MNIST <<bsp_mnist>>
+In diesem Beispiel werden verschiedene \acp{ANN} auf den ~MNIST~ cite:lecun-gradientbased-learning-applied-1998,TFDS
+Datensatz (siehe Kapitel ref:datensatz) trainiert.
+Ein Beispiel wie diese Pruning Vorgehensweise durch ~condense~ Methoden realisiert werden kann ist in Abbildung ref:code:mnist gegeben.
+Der Nutzer kann die Klasse ~condense.keras.Trainer(model, target_sparsity)~ nutzen um automatisiert einen Trainingsprozess zu starten.
+Sobald die Klasse initialisiert wurde, muss nur noch die Methode ~.train()~ aufgerufen werden, dabei können dieselben Funktionsargumente
+wie bei der ~keras~ Methode ~.fit()~ übergeben werden.
+Die unten gezeigten Graphen in Abbildung ref:fig:lottery-mnist-1 & ref:fig:lottery-mnist-2 zeigen Training/Testing Loss während des
+automatisierten Trainings.
+Beide geprunten Modelle wurden dabei mit einer Ziel-Sparsity von $80\%$ trainiert.
+Aus den Graphen geht hervor, wie der Testing-Loss des optimierten Modells trotz der hohen Pruning Rate nicht schlechter ausfällt,
+als bei dem selben noch vollständigen Modell.
+
+#+CAPTION[Lottery Ticket Pruning durch Condense]: Dank der einfachen Nutzerschnittstelle von ~condense~  label:code:mnist
+#+CAPTION: ist es sehr einfach Möglich automatisiert Pruning auf dem Ziel-Modell auszuführen.
+#+BEGIN_SRC
+import condense
+import tensorflow_datasets as tfds
+
+ds_train, ds_test = tfds.load('mnist', split=['train', 'test'],
+                               shuffle_files=True,
+                               as_supervised=True)
+
+model = ...
+model.compile(keras.optimizers.Adam(learning_rate=0.001),
+              keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+
+trainer = condense.keras.Trainer(model, .75)
+trainer.train(ds_train.batch(50),
+              epochs=20,
+              steps_per_epoch=2,
+              eval_data=ds_test.batch(50))
+#+END_SRC
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import sys
+sys.path.append('condense')
+import condense
+import matplotlib.pyplot as plt
+import numpy as np
+import keras
+from keras.layers import Dense
+from copy import deepcopy
+import tensorflow_datasets as tfds
+
+EPOCHS = 50
+SPARSITY = 0.8
+ds_train, ds_test = tfds.load('mnist', split=['train', 'test'], shuffle_files=True, as_supervised=True)
+
+model = keras.models.Sequential(layers=[
+    keras.layers.Flatten(input_shape=(28,28,1)),
+    Dense(1024, activation='relu', input_shape=(784,)),
+    Dense(512, activation='relu'),
+    Dense(256, activation='relu'),
+    Dense(50, activation='relu'),
+    Dense(10, name='output')
+])
+model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+model.build()
+
+INITIAL_WEIGHTS = deepcopy(model.get_weights())
+
+classical_training = model.fit(ds_train.batch(50), epochs=EPOCHS, steps_per_epoch=2, validation_data=ds_test.batch(50), validation_steps=2)
+assert (model.get_weights()[0] != INITIAL_WEIGHTS[0]).any()
+model.set_weights(INITIAL_WEIGHTS)
+model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+assert (model.get_weights()[0] == INITIAL_WEIGHTS[0]).all()
+
+trainer = condense.keras.Trainer(model, 0.75)
+hist = trainer.train(ds_train.batch(50).cache(), EPOCHS, steps_per_epoch=2, eval_data=ds_test.batch(50).cache())
+plt.figure(figsize=(10, 5))
+plt.title(f'MNIST model pruned by {SPARSITY*100}%')
+plt.plot(hist.history['val_loss'], label='Training on Sparse Model (Validation Loss)', lw=4)
+plt.plot(hist.history['loss'], label='Training on Sparse Model (Training Loss)', ls='--')
+plt.plot(classical_training.history['loss'], label='Training on Full Model (Training Loss)', ls='--')
+plt.plot(classical_training.history['val_loss'], label='Training on Full Model (Validation Loss)')
+plt.plot(trainer.history['ticket_search'].history['loss'], label='Search for winning ticket', ls=':')
+plt.grid()
+plt.legend()
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.axis([0, EPOCHS, 0, 10])
+plt.tight_layout()
+plt.savefig('resources/plots/lottery-1.png')
+return 'resources/plots/lottery-1.png'
+#+END_SRC
+
+#+LABEL: fig:lottery-mnist-1
+#+CAPTION[Lottery Ticket Hypothesis auf MNIST]:
+#+CAPTION: In dieser Grafik wird der Trainingsprozess eines geprunten Modells im Gegensatz zu einem unoptimierten Modell gezeigt.
+#+CAPTION: Es sollte sich primär an den rot und blau gekennzeichneten Linien orientiert werden, da diese jeweils dem Evaluation-Loss entsprechen.
+#+RESULTS[333f96f9eb909265676ad73c871fd79f451bba41]:
+[[file:resources/plots/lottery-1.png]]
+
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import sys
+sys.path.append('condense')
+import condense
+import matplotlib.pyplot as plt
+import numpy as np
+import keras
+from keras.layers import Dense, Conv2D
+from copy import deepcopy
+import tensorflow_datasets as tfds
+
+EPOCHS = 50
+SPARSITY = 0.8
+ds_train, ds_test = tfds.load('mnist', split=['train', 'test'], shuffle_files=True, as_supervised=True)
+
+model = keras.models.Sequential(layers=[
+    Conv2D(24, input_shape=(28,28,1,), kernel_size=5, activation='relu', padding='same'),
+    keras.layers.MaxPool2D(),
+    Conv2D(48, kernel_size=5, activation='relu', padding='same'),
+    keras.layers.MaxPool2D(),
+    keras.layers.Flatten(),
+    Dense(256, activation='relu'),
+    Dense(10, activation='softmax', name='output')
+])
+model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+model.build()
+
+INITIAL_WEIGHTS = deepcopy(model.get_weights())
+
+classical_training = model.fit(ds_train.batch(50), epochs=EPOCHS, steps_per_epoch=20, validation_data=ds_test.batch(50), validation_steps=2)
+model.set_weights(INITIAL_WEIGHTS)
+model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+
+trainer = condense.keras.Trainer(model, 0.75)
+hist = trainer.train(ds_train.batch(50).cache(), EPOCHS, steps_per_epoch=20, eval_data=ds_test.batch(50).cache())
+plt.figure(figsize=(10, 5))
+plt.title(f'MNIST model pruned by {SPARSITY*100}%')
+plt.plot(hist.history['val_loss'], label='Training on Sparse Model (Validation Loss)', lw=4)
+plt.plot(hist.history['loss'], label='Training on Sparse Model (Training Loss)', ls='--')
+plt.plot(classical_training.history['loss'], label='Training on Full Model (Training Loss)', ls='--')
+plt.plot(classical_training.history['val_loss'], label='Training on Full Model (Validation Loss)')
+plt.plot(trainer.history['ticket_search'].history['loss'], label='Search for winning ticket', ls=':')
+plt.grid()
+plt.legend()
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.axis([0, EPOCHS, 0, 3])
+plt.tight_layout()
+plt.savefig('resources/plots/lottery-2.png')
+return 'resources/plots/lottery-2.png'
+#+END_SRC
+
+#+LABEL: fig:lottery-mnist-2
+#+CAPTION[Lottery Ticket Pruning auf einem Modell mit convolutional Schichten]: Pruning auf einem Modell das auf dem MNIST Datensatz
+#+CAPTION: mit der Hilfe von convolutional Schichten trainiert wurde.
+#+RESULTS[8ccf04d8d219d20fe157a85a06af4dbc79be47f4]:
+[[file:resources/plots/lottery-2.png]]
+
+*** Vorbehalte
+Der Vergleich geprunter und ungeprunter Modelle gestaltet sich jedoch nicht so trivial wie in Kapitel ref:bsp_mnist dargestellt.
+Die Reduktion eines Großteils der Parameter wirkt sich extrem auf die Effekte von Hyperparametern[fn:hyperparameter] aus.
+Somit ist es für einen aussagekräftigen Vergleich nötig, auch Werte wie Learning Rate vor dem Training anzupassen.
+Um einen möglichst gerechten Vergleich zustande zu bringen, muss durch Hyperparameter-Tuning[fn:hyperparameter-tuning]
+von beiden zu vergleichenden Modellen jeweils die beste mögliche Wahl von Hyperparametern getroffen werden.
+
+** Keras Kompatibilitäts-Modul <<keras_module>>
 Um eine einfache und klare Schnittstelle zu Keras Modellen zu bieten, gibt ~condense~ Nutzern die Möglichkeit
 einzelne Keras Layer an einen Wrapper (~condense.keras.PruningWrapper~) zu übergeben.
 Dieser implementiert Schnittstellen für andere Komponenten des Frameworks.
@@ -566,7 +954,7 @@ Dabei werden Input (Schicht $0$) und Output (Schicht $4$) nicht durch Pruning op
 Dabei werden die Hidden Layer[fn:hidden] (Schicht $2$ und Schicht $3$) jeweils mit zwei verschiedenen Sparsity Funktionen
 optimiert. Schicht $2$ wird mit einer konstanten Ziel Sparsity von ~0.5~ optimiert und Schicht $3$ mit einer über das Training
 ansteigenden Ziel Sparsity bis zu ~0.7~.
-Bei dem Training (~mode.fit(..., callbacks=[PruningCallback()])~) wird durch den ~PruningWrapper~ automatisch eine entsprechende Pruning Operation durchgeführt.
+Bei dem Training (~model.fit(..., callbacks=[PruningCallback()])~) wird durch den ~PruningWrapper~ automatisch eine entsprechende Pruning Operation durchgeführt.
 
 #+BEGIN_EXAMPLE
 model = keras.models.Sequential(layers=[
@@ -601,130 +989,645 @@ augmented.fit(generator,
               callbacks=[PruningCallback()])
 #+END_SRC
 
-** One-Shot Pruning
-Unter One-Shot Pruning wird verstanden ein bereits trainiertes \ac{ANN} Modell durch eine Pruning Operation einmalig zu manipulieren.
-Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt, also auch keine Datensätze benötigt.
-Nachteile sind jedoch eine deutlich verlustbehafteten Optimierung im Kontrast zu iterativen Pruning (Kapitel ref:iterative).
-Die Implementierung von One-Shot Pruning gestaltet sich im Vergleich mit iterativen Pruning als trivial.
-Es wird eine Maskierungs-Funktion benötigt, um die zu prunenden Felder der Matrix zu ermitteln.
-Eine einfache Maskierungs-Funktion wäre beispielsweise die Auswahl aller Felder, die unter eine festgelegten Threshold $t$ liegen.
-Die durch diese Funktion resultierende Matrix $S$ wird auch Sparsity-Mask (siehe Kapitel ref:sparsity_mask) genannt.
-$$
-\caption{Beispiel: }\ W = \begin{pmatrix} 0.4 && 2 \\ 1.1 && 0\end{pmatrix} \text{ mit } t = 1.0 \Rightarrow S = \begin{pmatrix} 0 && 1 \\ 1 && 0 \end{pmatrix}
-$$
+** PyTorch Kompatibilitäts-Modul <<pytorch>>
+PyTorch hat in den letzten Jahren deutlich an Popularität gewonnen, dies liegt neben mehreren Gründen vor allem
+an der einfachen Handhabe im Zusammenhang mit Python.
+Aufgrund der Architektur lassen sich Pruning Masken in PyTorch signifikant eleganter und einfacher implementieren,
+als in TensorFlow/Keras.
+Im Vergleich zu ~Keras~ gestaltete sich die Implementierung von Pruning Masken für die Parameter eines Modells deutlich einfacher
+und genereller.
+So lassen sich in PyTorch beliebige Modelle durch ~condense~ pruning Implementationen optimieren.
+Selbst die Implementation des Training-Loops ist nicht durch ~condense~ vorgeschrieben.
+Wie bei der Implementation für Keras ist es notwendig, sein Modell in einer Wrapper Klasse (~condenes.torch.PruningAgent~) zu packen.
 
-#+BEGIN_SRC python :exports results :results file :cache yes
-import matplotlib.pyplot as plt
-import numpy as np
-w = np.random.random((50,100))
-t = 0.5
-plt.figure(figsize=(15, 3))
-plt.subplot(1, 4, 1)
-plt.imshow(w, vmin=0.0, vmax=1.0)
-plt.title('Source Matrix')
+#+BEGIN_SRC
+from condense.torch import PruningAgent
+from condense.optimizer.sparsity_functions import Constant
 
-plt.subplot(1, 4, 2)
-w[w < t] = 0
-plt.imshow(w, vmin=0.0, vmax=1.0)
-plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
-
-plt.subplot(1, 4, 3)
-t += .1
-w[w < t] = 0
-plt.imshow(w, vmin=0.0, vmax=1.0)
-plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
-
-plt.subplot(1, 4, 4)
-t += .1
-w[w < t] = 0
-plt.imshow(w, vmin=0.0, vmax=1.0)
-plt.title(f'One-Shot pruned Matrix mit Threshold {t}')
-
-plt.tight_layout()
-plt.savefig('resources/plots/one-shot-random.png')
-return 'resources/plots/one-shot-random.png'
+model = ...
+agent = PruningAgent(model, Constant(0.75))
 #+END_SRC
 
-#+LABEL: fig:oneshot
-#+CAPTION[Visualisierung von One Shot Pruning]: Visualisierung von One Shot Pruning mit verschiedenen Thresholds $t$.
-#+CAPTION: Die das Pruning durchführende Operation ~w[w < t] = 0~ setzt alle sich in der Maske ~w < t~ befindenden Felder der Matrix auf $0$.
-#+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-)Funktion ersetzt werden.
-#+RESULTS[4d4296df54d9b9d4b9103dabc59b43cf9a792ad6]:
-[[file:resources/plots/one-shot-random.png]]
+Das Modell wurde nun auf eine Sparsity von $75\%$ gepruned und kann nun regulär trainiert werden.
+Ein Training-Callback wird bei dieser Implementation nicht benötigt.
+Der ~PruningAgent~ führt bei der Initialisierung folgende Operationen durch:
+1. Er legt eine ~HashMap~ an, die Parameter des Modells auf einen Tensor gleicher Größe abbildet.
+   #+begin_quote
+   Um gewisse Parameter oder Module eines Modells vom Pruning auszuschließen, kann das Konstruktor-Argument ~ignored_params~ verwendet werden.
+   Es handelt sich dabei um kein benötigtes Argument, jedoch empfiehlt es sich Output Layer eines Netzes nicht zu prunen.
+   #+end_quote
+2. Jeder Parameter erhält einen Callback der automatisch ausgeführt wird, sobald der jeweilige Gradient berechnet wurde.
+   Dieser multipliziert die Maske auf den Gradienten, also eliminiert maskierte Felder.
+   Somit wird sichergestellt, dass maskierte Felder durch den Optimizer nicht manipuliert werden können.
 
-In Abbildung ref:fig:oneshot ist ein derartiges triviales Pruning von Feldern aus einer Matrix in visueller Form dargestellt.
+** Pruning während des Trainings-Przoesses
+#+BEGIN_SRC python :exports results :results file :cache yes
+import keras
+import matplotlib.pyplot as plt
+import tensorflow_datasets as tfds
+import sys
+sys.path.append('condense')
+import condense
 
-** Iteratives Pruning <<iterative>>
+ds = tfds.load('iris', split='train', shuffle_files=True, as_supervised=True).repeat()
 
-*** Sparsity Mask <<sparsity_mask>>
-Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
-Für iteratives Pruning ist eine Maske zwingend notwendig, da diese beim Refitting angibt, welche Weights geändert werden können. cite:Frankle2018
-Wie Abbildung ref:fig:refitting zeigt, wird durch das Refitting ohne jegliche Maske die Sparsity des Modells zerstört.
-Es ist gut in der rechts-unteren Grafik ersichtlich, wie das Refitting die Gewichtungen innerhalb eines Layers verändert.
+model = keras.models.Sequential(layers=[
+    keras.layers.Dense(40, input_shape=(4,), activation='relu'),
+    keras.layers.Dense(80, activation='relu'),
+    keras.layers.Dense(3)
+])
+
+model.compile(keras.optimizers.Adam(learning_rate=0.001),
+              keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+model.build()
+w = model.get_weights()
+unpruned_loss = model.fit(ds.batch(100), epochs=20, steps_per_epoch=50)
+model.compile(keras.optimizers.Adam(learning_rate=0.001),
+              keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+
+assert (w[0] != model.get_weights()[0]).any()
+
+model.set_weights(w)
+
+assert (w[0] == model.get_weights()[0]).all()
+
+model = condense.keras.wrap_model(model,
+                                  condense.optimizer.sparsity_functions.Constant(.3))
+pruned_loss = model.fit(ds.batch(100),
+                  epochs=20,
+                  steps_per_epoch=50,
+                  callbacks=[condense.keras.PruningCallback()])
+
+plt.figure(figsize=(6, 3))
+plt.plot(unpruned_loss.history['loss'], label='unpruned loss')
+plt.plot(pruned_loss.history['loss'], label='pruned loss')
+plt.legend()
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.grid()
+plt.tight_layout()
+plt.savefig('resources/plots/keras-2.png')
+return 'resources/plots/keras-2.png'
+#+END_SRC
+
+#+CAPTION: Training-Loss des Modells mit pruning und ohne.
+#+ATTR_LATEX: :float wrap :width 8cm :center nil
+#+RESULTS[c843eb90e533d65b93173bee9fa04a5247eac527]:
+[[file:resources/plots/keras-2.png]]
+
+Eine Möglichkeit ein Modell während des Trainings-Prozesses zu prunen ist die jeweilig zu prunenden Parameter nach bestimmten Trainingsabschnitten immer wieder erneut zu prunen.
+
+Integriert wurde dies in dieser Implementation in der Form eines Wrappers für Keras Layer.
+So müssen die Layer eines bestehenden Modells nur an den Constructor der Wrapper Klasse übergeben werden und dieser berechnet einen geeigneten Sparsity-Tensor während des Trainings.
+Der Ablauf von Operationen während des Trainings kann in Abbildung ref:fig:pruning-process betrachtet werden.
+Durch die Callback API, die von Keras zur Verfügung gestellt wird werden die Pruning Operationen in definierten Intervallen während des Trainings ausgeführt.
+Bei der Pruning Operation handelt es sich um die elementare Multiplikation der Sparsity Mask $M$ und des jeweiligen Parameters $p$ Tensors $p_{neu} = p_{alt} \times M$.
+
+#+begin_src mermaid :file resources/plots/training-process.png :theme forest :background transparent :cache yes
+graph LR
+    fit(.fit) --> forward-pass[Forward Propagation]
+    forward-pass --> bp[Back Propagation]
+    bp --> update[Update Sparsity Mask]
+    update --> pruning[Perform Pruning]
+#+end_src
+
+#+LABEL: fig:pruning-process
+#+CAPTION: Ablauf des Pruning Prozesses während des Trainings.
+#+RESULTS[95245539d25fae59ce110bf3118accc7226369a4]:
+[[file:resources/plots/training-process.png]]
+
 
 #+BEGIN_SRC python :exports results :results file :cache yes
+import sys
+sys.path.append('condense')
+import condense
+import keras
+import tensorflow_datasets as tfds
 import matplotlib.pyplot as plt
+from keras.layers import Dense
+
+model = keras.models.Sequential(layers=[
+    keras.layers.Dense(40, input_shape=(4,), activation='relu'),
+    keras.layers.Dense(80, activation='relu'),
+    keras.layers.Dense(1)
+])
+model.compile('adam', 'mse')
+
+t_sparsity = 0.8
+
+ds = tfds.load('iris', split='train', shuffle_files=True, as_supervised=True)
+ds = ds.repeat()
+layer = 2
+
+old_weights = model.get_weights()
+
+plt.figure(figsize=(12, 6))
+plt.subplot(221)
+plt.imshow(abs(model.get_weights()[2]), vmin=0, vmax=.4)
+plt.title(f'Layer {layer} des ursprünglichen Modells')
+
+hist1 = model.fit(ds.batch(200), steps_per_epoch=200, epochs=10)
+plt.subplot(222)
+plt.imshow(abs(model.get_weights()[2]), vmin=0, vmax=.4)
+plt.title(f'Layer {layer} des trainierten Modells (ohne Pruning)')
+
+model = condense.keras.wrap_model(model, condense.optimizer.sparsity_functions.Constant(t_sparsity))
+hist2 = model.fit(ds.batch(200), steps_per_epoch=200, epochs=10, callbacks=[condense.keras.callbacks.PruningCallback()])
+
+plt.subplot(223)
+plt.imshow(abs(model.layers[1].kernel), vmin=0, vmax=.4)
+plt.title(f'Layer {layer} des trainierten Modells (mit {t_sparsity*100}% Pruning)')
+
+plt.subplot(224)
+plt.imshow(abs(model.layers[1].mask), cmap='gist_gray')
+plt.title(f'Sparsity Mask des Layers {layer}')
+
+plt.tight_layout()
+plt.savefig('resources/plots/keras-1.png')
+return 'resources/plots/keras-1.png'
+#+END_SRC
+
+#+CAPTION[Weights training mit Pruning und ohne]: Ausschnitts der Weights eines Layers trainiert mit und ohne Pruning.
+#+CAPTION: Das Modell wurde auf dem Iris Dataset cite:TFDS (Kapitel ref:datensatz) trainiert
+#+RESULTS[0a481db813a8cbb39cf65b0aa86bce939c3e1e32]:
+[[file:resources/plots/keras-1.png]]
+
+** Keras/TensorFlow als Backend
+Operationen des neuronalen Netzes wie das Training oder die Evaluierung wird durch das auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
+Dies bietet Nutzern erhebliche Vorteile wie die mögliche Ausführung auf verschiedensten Plattformen wie GPU/CPU oder Hardware Beschleunigern.
+Zudem lassen sich TensorFlow "Layer" eines neuronalen Netzes einfach durch eine öffentliche API erweitern.
+Somit lässt sich im weiteren Verlauf des Projekts eine direkte Integration in das TensorFlow Ökosystem anstreben.
+TensorFlow bietet zusätzlich durch das externe Modul ~model-optimization~[fn:model_opt] Optimierungen an einem Keras/TensorFlow Modell vorzunehmen.
+Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Modell durch die Augmentation von Layern um Pruning Funktionalität erweitert werden kann.
+Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
+Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
+
+* Ergebnisse
+
+** One Shot Pruning
+Das One Shot Interface des ~condense~ Moduls ist durch ~condense.one_shot()~ zu nutzen.
+So ist es sehr leicht möglich Keras Modelle durch One-Shot Pruning zu optimieren.
+Im diesem Kapitel werden verschiedenste Modelle durch diese Methode optimiert und evaluiert.
+Ein Beispiel für das One-Shot Interface des ~condense~ Moduls ist in Abbildung ref:src:one-shot zu sehen.
+
+#+LABEL: src:one-shot
+#+CAPTION: Beispiel des One-Shot Pruning Interface
+#+BEGIN_SRC
+model = keras.models.load_model(...)  # keras model
+pruned = condense.one_shot(model, 0.9)  # 90% target sparsity
+#+END_SRC
+
+*** Iris Dataset
+#+begin_quote
+Bei diesem Modell handelt es sich um ein eigens auf den Iris Datensatz (Kapitel ref:datensatz) trainiertes Dense \ac{ANN}.
+#+end_quote
+Naives Pruning in Form von One-Shot Pruning hat drastische Auswirkungen auf die Modell Accuracy,
+wie in Abbildung ref:fig:iris-results-one-shot zu sehen ist.
+Aus diesem Grund sollte One-Shot Pruning in den meisten Fällen nicht für die Optimierung von Modellen genutzt werden.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
 import numpy as np
 import sys
 import keras
-import tensorflow_datasets as tfds
-sys.path.append('./condense')
+import matplotlib.pyplot as plt
+sys.path.append("condense")
 import condense
+import tensorflow_datasets as tfds
 
 ds = tfds.load('iris', split='train', shuffle_files=True, as_supervised=True)
 ds = ds.repeat()
 
 model = keras.models.load_model('resources/models/iris.h5')
-layer = 2
-pruning_intensity = 0.8
 
-plt.figure(1, figsize=(10, 5))
-plt.subplot(221)
+def testing_function(model, refrence):
+    model.compile(optimizer='adam', loss="mse")
+    return model.evaluate(ds.batch(200), steps=20)
 
-plt.imshow(model.get_weights()[layer], vmax=1.0, vmin=.0)
-plt.savefig('resources/plots/iterative-1.png')
-plt.title('Weight Matrix eines trainierten Layers \n ohne Pruning Optimierungen')
+steps = np.arange(0, .99, .05)
 
-plt.subplot(222)
+plt.figure(figsize=(8, 4))
+plt.plot(steps*100,
+         [testing_function(condense.one_shot(model, acc), model) for acc in steps])
 
-plt.imshow((pruned := condense.one_shot(model, pruning_intensity)).get_weights()[layer], vmax=1.0, vmin=.0)
-plt.savefig('resources/plots/iterative-1.png')
-plt.title(f'Weight Matrix des optimierten Layers mit {round(condense.utils.model_utils.calc_model_sparsity(pruned), 4) * 100}% \n Modell Sparsity')
-
-pre_training = pruned.get_weights()[layer]
-
-# Retraining
-plt.subplot(223)
-
-pruned.compile('adam', 'mse')
-pruned.fit(ds.batch(30), epochs=15, steps_per_epoch=100)
-plt.imshow(pruned.get_weights()[layer], vmin=.0, vmax=1.0)
-plt.title(f'Optimiertes Modell nach Refitting ({round(condense.utils.model_utils.calc_model_sparsity(pruned), 4) * 100}% Modell Sparsity)')
-
-# Diff plot
-plt.subplot(224)
-plt.imshow(np.abs(pre_training - pruned.get_weights()[layer]), cmap='binary')
-plt.title('Änderungen der Gewichtungen durch Refitting')
-
-plt.tight_layout()
-
-plt.savefig('resources/plots/iterative-1.png')
-
-return 'resources/plots/iterative-1.png'
+plt.title('Verlust von Accuracy mit zunehmender Pruning Stärke')
+plt.xlabel('Sparsity des Modells in %')
+plt.ylabel('Model Accuracy (mse)')
+plt.grid()
+plt.savefig('resources/plots/iris-accuracy-1.png')
+return 'resources/plots/iris-accuracy-1.png'
 #+END_SRC
 
-#+LABEL: fig:refitting
-#+CAPTION[Weights eines Layers nach refitting]: In dieser Grafik wird der Layer eines Modells,
-#+CAPTION: durch naives Weight und Neuron Pruning optimiert und anschließend durch refitting erneut trainiert.
-#+RESULTS[c22c44c8b060e3dbd8f39ee7440c4dc97136acce]:
-[[file:resources/plots/iterative-1.png]]
+#+LABEL: fig:iris-results-one-shot
+#+CAPTION: Dense Model Accuracy mit zunehmender Pruning Stärke.
+#+RESULTS[05bfe488e6deb3369cdd62e1398ff7fdb1ac4f60]:
+[[file:resources/plots/iris-accuracy-1.png]]
 
-*** Refitting <<refitting>>
+*** Convolutional Model
+#+BEGIN_SRC python :exports results :results file :cache yes
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import sys
+import numpy as np
+from datasets import mnist
+sys.path.append('condense')
+import condense
+import torchviz
+from graphviz import Source
 
-* Ergebnisse
+train_loader, test_loader = mnist()
+
+model = nn.Sequential(
+    nn.Conv2d(in_channels=1, out_channels=4, kernel_size=4, stride=2),
+    nn.ReLU(),
+    nn.Conv2d(in_channels=4, kernel_size=4, out_channels=1, stride=1),
+    nn.ReLU(),
+    nn.Flatten(),
+    nn.Linear(100, out_features=255),
+    nn.ReLU(),
+    nn.Linear(255, out_features=255),
+    nn.ReLU(),
+    nn.Linear(255, out_features=128),
+    nn.ReLU(),
+    nn.Linear(128, out_features=10)
+)
+
+loss = torch.nn.CrossEntropyLoss()
+
+optim = torch.optim.Adam(model.parameters(), lr=0.001)
+hist, test_hist = [], []
+
+for _, i in enumerate(train_loader):
+    model.zero_grad()
+    pred = model.forward(i[0])
+    l = loss(pred, i[1])
+    hist.append(l)
+    l.backward()
+    optim.step()
+
+    _, (X, y) = next(enumerate(test_loader))
+    test_hist.append(loss(model.forward(X), y))
+
+def testing_function(model, acc):
+    agent = condense.torch.PruningAgent(model,
+                                        condense.optimizer.sparsity_functions.Constant(acc),
+                                        apply_mask=True,
+                                        ignored_params=[list(model.parameters())[-1]])
+
+
+    _, (X, y) = next(enumerate(test_loader))
+    l = loss(model.forward(X), y)
+
+    return l
+
+plt.figure(figsize=(8, 4))
+acc = [testing_function(model, a) for a in np.arange(0, .99, .05)]
+plt.plot(np.arange(0, .99, .05)*100, acc)
+plt.xlabel('Sparsity des Modells in %')
+plt.ylabel('Model Loss (crossentropy)')
+plt.title('Verlust von Accuracy mit zunehmender Pruning Stärke')
+plt.grid()
+plt.tight_layout()
+plt.savefig('resources/plots/conv_one_shot.png')
+return 'resources/plots/conv_one_shot.png'
+#+END_SRC
+
+#+LABEL: fig:mnist-results-one-shot
+#+CAPTION: Convolutional Model Accuracy mit zunehmender Pruning Stärke.
+#+RESULTS[3d38d99a1f6c222d7f832659b987956c2f75d35f]:
+[[file:resources/plots/conv_one_shot.png]]
+
+** Training eines Sub-Networks (Lottery Ticket Hypothesis cite:Frankle2018)
+Bei vorangegangenen Pruning-Methoden, wurde bisher nur nach oder während des Trainings-Prozesses Pruning vorgenommen.
+Jedoch ist es auch möglich das Training auf einem Sub-Network, also ein gepruntes Netz des Originals vorzunehmen cite:Frankle2018.
+Für eine genaueren Beschreibung dieser Methodik wird an dieser Stellte auf Kapitel ref:lottery_ticket dieser Arbeit verwiesen.
+
+Durch die Anwendung der "Lottery Ticket Hypothesis" cite:Frankle2018 ist es möglich den initialen Trainingsprozess deutlich zu verbessern.
+Diese Pruning Methode ist nur für Modelle möglich, die noch nicht trainiert wurden, für bereits trainierte Modelle sollte ein One-Shot Pruning Ansatz gewählt werden.
+So zeigt Abbildung ref:fig:torch-lottery-1 die Auswirkungen der Ticket-Suche und Reinitialisierung auf den Evaluation Loss des letztendlichen Trainingsprozesses.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import sys
+sys.path.append('condense')
+import torch
+import condense
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import torchvision
+from datasets import mnist
+
+d_train, d_test = mnist()
+
+class Network(nn.Module):
+    def __init__(self):
+        super(Network, self).__init__()
+        self.layer1 = nn.Conv2d(in_channels=1, out_channels=4, kernel_size=4, stride=2)
+        self.layer2 = nn.Conv2d(in_channels=4, out_channels=2, kernel_size=2)
+        self.dense = nn.Linear(288, out_features=50)
+        self.dense2 = nn.Linear(50, out_features=50)
+        self.output = nn.Linear(50, out_features=10)
+
+
+    def forward(self, X):
+        X = self.layer1.forward(X)
+        X = self.layer2.forward(torch.relu(X))
+        X = X.view(torch.relu(X).size(0), -1)
+        X = self.dense.forward(torch.relu(X))
+        X = self.dense2.forward(torch.relu(X))
+        X = self.output.forward(torch.relu(X))
+        return X
+
+    def train(self, data, epochs=None, eval_data=None, lr=0.001):
+        metrics = {
+            "loss": [],
+            "eval": []
+        }
+        criterion = nn.CrossEntropyLoss()
+        optim = torch.optim.Adam(self.parameters(), lr=lr)
+        for i, (X, y) in enumerate(data):
+            if epochs and epochs < i:
+                break
+
+            self.zero_grad()
+            pred = self.forward(X)
+            l = criterion(pred, y)
+            l.backward()
+            optim.step()
+            metrics['loss'].append(l)
+
+            if eval_data:
+                _, (X, y) = next(enumerate(eval_data))
+                metrics['eval'].append(criterion(self.forward(X), y))
+
+        return metrics
+
+test_net = Network()
+
+model = Network()
+model.load_state_dict(test_net.state_dict())
+p = condense.torch.PruningAgent(model, condense.optimizer.sparsity_functions.Constant(0.5), apply_mask=False, ignored_params=[model.output])
+
+with condense.torch.TicketSearch(p):
+    model.train(d_train, 200, d_test, lr=0.001)
+
+fine_t_data = model.train(d_train, 300, d_test, lr=0.001)
+
+# Training without pruning
+without_data = test_net.train(d_train, 500, d_test, 0.001)
+
+plt.figure(figsize=(9, 6))
+
+plt.plot(fine_t_data['eval'], label='Evaluation Loss während des Fine Tuning Prozesses')
+plt.plot(without_data['eval'], label='Evaluation Loss während des Trainings ohne Pruning')
+plt.title('Training eines geprunten Modells ($50\\%$ Sparsity)')
+plt.xlabel('# Epoch')
+plt.ylabel('Eval Loss')
+plt.grid()
+plt.legend()
+plt.axis([0, 200, 0, 2.3])
+plt.tight_layout()
+plt.savefig('resources/plots/torch-lottery-2.png')
+return 'resources/plots/torch-lottery-2.png'
+#+END_SRC
+
+#+LABEL: fig:torch-lottery-1
+#+CAPTION[Vergleich zwischen optimierten und unoptimierten Trainingsverläufen]:
+#+CAPTION: Beide hier dargestellten Modelle wurden mit den identischen Parameter Werten initialisiert.
+#+CAPTION: Es kann beobachtet werden, dass das "Winning Ticket" Modell deutlich schneller konvergiert, als das unoptimierte Modell.
+#+ATTR_LATEX: :float wrap :width 8cm :center nil
+#+RESULTS[687cc7ba324250020c1712a56f0185dc27528bb8]:
+[[file:resources/plots/torch-lottery-2.png]]
+
+Bei der Wahl verschiedener Learning Raten der Modelle kann, wie in Abbildung ref:fig:torch-lottery-lr gezeigt, konstant eine effizientere
+Konvergierung erreicht werden.
+Somit bietet das Training auf einem geprunten Modell je nach Datensatz und verwendeter Modell-Architektur enormes Potential ein schnelleres und
+eventuell besser generalisierendes Modell zu erhalten.
+Demnach ist es durch die Implementation des unter dieser Arbeit entwickelten Frameworks, gelungen die Ergebnisse des ursprünglichen Artikels zu reproduzieren.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import sys
+sys.path.append('condense')
+import torch
+import condense
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import torchvision
+from datasets import mnist
+
+d_train, d_test = mnist()
+
+class Network(nn.Module):
+    def __init__(self):
+        super(Network, self).__init__()
+        self.layer1 = nn.Conv2d(in_channels=1, out_channels=4, kernel_size=4, stride=2)
+        self.layer2 = nn.Conv2d(in_channels=4, out_channels=2, kernel_size=2)
+        self.dense = nn.Linear(288, out_features=50)
+        self.dense2 = nn.Linear(50, out_features=50)
+        self.output = nn.Linear(50, out_features=10)
+
+
+    def forward(self, X):
+        X = self.layer1.forward(X)
+        X = self.layer2.forward(torch.relu(X))
+        X = X.view(torch.relu(X).size(0), -1)
+        X = self.dense.forward(torch.relu(X))
+        X = self.dense2.forward(torch.relu(X))
+        X = self.output.forward(torch.relu(X))
+        return X
+
+    def train(self, data, epochs=None, eval_data=None, lr=0.001):
+        metrics = {
+            "loss": [],
+            "eval": []
+        }
+        criterion = nn.CrossEntropyLoss()
+        optim = torch.optim.Adam(self.parameters(), lr=lr)
+        for i, (X, y) in enumerate(data):
+            if epochs and epochs < i:
+                break
+
+            self.zero_grad()
+            pred = self.forward(X)
+            l = criterion(pred, y)
+            l.backward()
+            optim.step()
+            metrics['loss'].append(l)
+
+            if eval_data:
+                _, (X, y) = next(enumerate(eval_data))
+                metrics['eval'].append(criterion(self.forward(X), y))
+
+        return metrics
+
+test_net = Network()
+
+def benchmark_function(lr_search, lr_train):
+    model = Network()
+    model.load_state_dict(test_net.state_dict())
+    p = condense.torch.PruningAgent(model, condense.optimizer.sparsity_functions.Constant(0.7), apply_mask=False, ignored_params=[model.output])
+
+    with condense.torch.TicketSearch(p):
+        search = model.train(d_train, 200, d_test, lr=lr_search)
+
+    return model.train(d_train, 300, d_test, lr=lr_train), search
+
+
+plt.figure(figsize=(14, 6))
+
+for i, (lr_train, c) in enumerate(zip([0.01, 0.005, 0.001], ['#32a852', '#264653', '#9d0208'])):
+    fine_t_data, search_data = benchmark_function(lr_train, lr_train)
+    # plt.subplot(3,1,i+1)
+    plt.plot(fine_t_data['eval'], label=f'Fine Tuning ({lr_train} lr)', lw=1.8, c=c)
+    plt.plot(search_data['eval'], label=f'Ticket Searching ({lr_train} lr)', ls='--', c=c)
+    plt.xlabel('# Epoch')
+    plt.ylabel('Eval Loss')
+    plt.grid()
+    plt.legend()
+
+plt.title('Convolutional Model trainiert auf MNIST Dataset')
+plt.tight_layout()
+plt.savefig('resources/plots/torch-lottery.png')
+return 'resources/plots/torch-lottery.png'
+#+END_SRC
+
+#+LABEL: fig:torch-lottery-lr
+#+CAPTION[Lottery Ticket Hypothesis und Learning Rate]: In dem hier gezeigten Diagramm wird ein identisches Modell,
+#+CAPTION: bestehend aus convolutional und dense Layern durch die in der Lottery Ticket Hypothesis Methodik optimiert.
+#+CAPTION: Dabei symbolisiert jede Farbe eine Learning Rate, die für das Suchen und Trainieren des Modells gewählt wurde.
+#+CAPTION: Die gestrichelten Linien repräsentieren den jeweiligen Evaluation-Loss, des Winning Ticket Such-Prozesses.
+#+CAPTION: Die durchgezogenen Linien symbolisieren den Evaluation-Loss des Fine-Tuning Prozesses.
+#+RESULTS[dcfd136a8394c0ab1b61cdcb81c589cf1c082cc9]:
+[[file:resources/plots/torch-lottery.png]]
+
 ** Einfluss von Aktivierungs-Funktionen auf Pruning Verfahren <<activations>>
+Es lässt sich bei der Analyse von Layer-Sparsity auf neuronalen Netzen, die mit unterschiedlichen Aktivierungsfunktionen
+trainiert wurden feststellen, dass Aktivierungsfunktionen starke Auswirkungen auf die Gewichtungsverteilung der Schichten eines \acp{ANN} hat.
+Bei dem Betrachten der Abbildung ref:fig:activation_fn, werden die Auswirkungen der Aktivierungsfunktionen ersichtlicher.
+
+#+BEGIN_SRC python :exports results :results file :cache yes
+import tensorflow_datasets as tfds
+import keras
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,8))
+AF = ['relu', 'sigmoid', 'tanh']
+ds = tfds.load('iris', split=['train'], shuffle_files=True, as_supervised=True)[0]
+
+for i, activation_fn in enumerate(AF):
+    plt.subplot(3, len(AF), i+1)
+    model = keras.models.Sequential(layers=[
+        keras.layers.Dense(20, input_shape=(None, 4), activation=activation_fn),
+        keras.layers.Dense(20, activation=activation_fn),
+        keras.layers.Dense(3, activation='softmax')
+    ])
+    model.compile(keras.optimizers.Adam(learning_rate=0.3), 'sparse_categorical_crossentropy')
+    model.fit(ds.batch(300), epochs=400, steps_per_epoch=10000)
+    plt.imshow(np.abs(model.layers[1].kernel.numpy()), vmin=0.0, vmax=0.7)
+    plt.title(f'{activation_fn} ({np.mean(np.abs(model.layers[1].kernel.numpy()))})')
+    plt.subplot(3, len(AF), 3+i+1)
+    plt.hist(np.abs(model.layers[1].kernel.numpy().flatten()))
+    # Diff
+    plt.subplot(3, len(AF), 6+i+1)
+    plt.title('Weight Pruning $30\\%$')
+    w = np.abs(model.layers[1].kernel.numpy())
+    w[w > np.sort(w.flatten())[int(np.prod(w.shape) * 0.4)]] = 0
+    plt.imshow(w, vmin=0.0, vmax=0.2, cmap='gist_gray')
+
+
+plt.tight_layout()
+plt.savefig('resources/plots/sparsity_activation.png')
+return 'resources/plots/sparsity_activation.png'
+#+END_SRC
+
+#+LABEL: fig:activation_fn
+#+CAPTION[Einfluss von Aktivierungsfunktionen auf die Verteilung von Verbindungsgewichtungen]:
+#+CAPTION: Einfluss von verschiedenen Aktivierungsfunktionen auf die Gewichtungs-Verteilung einer \ac{ANN} Schicht.
+#+CAPTION: Das dargestellte neuronale Netz wurde auf dem Iris Datensatz trainiert cite:fisher36lda.
+#+CAPTION: Bei den dargestellten Werten, handelt es sich jeweils immer um den absoluten Wert einer Gewichtung.
+#+RESULTS[9089ef3251e99a9134f406d0e66919b42e142e2d]:
+[[file:resources/plots/sparsity_activation.png]]
+
+Eine Aktivierungsfunktion, die tendenziell eine höhere Anzahl von Gewichtungen gegen $0$ optimiert ist für ein zu
+prunenden Netzes begehrenswerter.
+Somit gehen bei dem Pruning deutlich weniger stark gewichtete Verbindungen verloren.
+In Abbildung ref:fig:activation_fn ist in der letzten Zeile zu erkennen, dass deutlich Unterschiede bei den zu prunenden Gewichtungen zu erkennen sind.
+So ist es bei dem mit ~ReLU~ trainierten Netz auffällig, wie im Verhältnis die geprunten Verbindungen deutlich schwächer gewichtet sind als bei
+den anderen Netzen.
+
+Durch die in diesem Kapitel gezeigten Erkenntnisse, lässt sich empfehlen Aktivierungsfunktionen für das Training von zu prunenden \acp{ANN} zu nutzen,
+die Gewichtungen möglichst gegen $0$ zu optimieren.
+
+** Pruning durch Pruning Layer
+
+** Anwendung des Pruning-Frameworks auf bekannte neuronale Netze
+#+BEGIN_SRC python :exports results :results file :cache yes
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+sys.path.append('./condense')
+import condense
+from condense.utils.model_utils import calc_model_sparsity
+from condense.utils.layer_utils import calc_layer_sparsity
+from keras.applications.resnet50 import ResNet50
+
+model = ResNet50(weights='imagenet')
+pruned = condense.one_shot(model, 0.3)
+
+plt.figure(figsize=(10,4))
+ax1 = plt.subplot(111)
+ax1.bar(np.arange(0, len(model.get_weights()[10:]), 1),
+        height=[np.mean(np.abs(layer)) for layer in model.get_weights()[10:]],
+        label=f'Unpruned Model ({round(calc_model_sparsity(model)*100, 2)}% Sparsity)',
+        width=3,
+        zorder=1)
+ax1.bar(np.arange(0, len(model.get_weights()[10:]), 1),
+        height=[np.mean(np.abs(layer)) for layer in pruned.get_weights()[10:]],
+        label=f'Pruned Model ({round(calc_model_sparsity(pruned)*100, 2)}% Sparsity)',
+        width=1,
+        zorder=2)
+
+# ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+# ax2.bar(np.arange(0, len(model.get_weights()[10:]), 1),
+#         height=[calc_layer_sparsity(layer) for layer in pruned.get_weights()[10:]],
+#         label=f'Pruned Model ({round(calc_model_sparsity(pruned)*100, 2)}% Sparsity)',
+#         color='grey',
+#         alpha=0.7,
+#         zorder=2)
+ax1.legend()
+ax1.set_title('ResNet50 Weight Distribution')
+ax1.set_xlabel('Network Layer Nr.')
+ax1.set_ylabel('Avg. Layer Weights')
+
+plt.grid()
+plt.legend()
+
+plt.savefig('./resources/plots/resnet50_hist.png')
+return './resources/plots/resnet50_hist.png'
+#+END_SRC
+
+#+CAPTION[ResNet50 Weight Matrix Histogramm]: ResNet50 Weight Matrix Histogramm
+#+RESULTS[2b4f93e360e78cf2184b4f9ba587edd4bc1947a4]:
+[[file:./resources/plots/resnet50_hist.png]]
+
 * Fazit
+** Kapitalisierung von Sparsity in neuronalen Netzen <<kapit>>
+Aus der erhöhten Sparsity von neuronalen Netzen, lässt sich leider kein direkter Leistungsanstieg in Form von Inferenz Zeit verzeichnen.
+Herkömmliche Multiplikation von Matrizen wird nicht durch die erhöhte Sparsity beschleunigt,
+somit kann meist lediglich eine bessere Generalisierung des Modells beobachtet werden.
+Jedoch beschäftigen sich bereits viele verschiedene Teams mit der Entwicklung von Hardware und Software Lösungen um das Potential von Sparse \acp{ANN}
+auszuschöpfen.
+So lässt sich durch spezielle Hardware Beschleuniger eine Verbesserung von Inferenz-Zeit um einen Faktor von $3.6\times$ bis $12.9\times$ erreichen cite:8735526.
+Ob sich derartige Hardware Beschleuniger beweisen können, wird sich in Zukunft zeigen.
+
+Eine schon bestehende Software Lösung für derartige Optimierungen könnte das unter Facebook AI Entwickelte Framework ~GLOW~[fn:glow] bieten.
+Bei diesem handelt es sich um einen Compiler der \ac{ANN} Modelle direkt in Maschinen-Code übersetzen kann cite:rotem2019glow.
+Durch das von ~GLOW~ genutzte ~LLVM~ Backend, lassen sich Optimierungen auf dem ~IR~ des Modell-Codes anwenden.
+Besonders für die Entwicklung auf Embedded Devices ist dieses Tool sehr relevant, jedoch bietet es auch äußerst viel-versprechende Optimierungen für Sparse \ac{ANN} Modelle cite:Lewis2018.
+
 * Ausblick
+** Weiterentwicklung des Frameworks
+** Forschung
 
 #+LATEX: \printbibliography
 
@@ -737,6 +1640,7 @@ Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes die Sparsity 
 [fn:loss] Als Loss wird der allgemeine Fehler des Netztes auf einem Datensatz bezeichnet.
 Die Funktion die den Loss berechnet wird Loss Funktion benannt.
 [fn:gradient] Alle Partiellen Ableitungen einer Funktion $f(x_1, \dots, x_n)$ werden als Gradienten $\nabla f = \begin{pmatrix} \frac{\partial f}{\partial x_1} \\ \dots \\ \frac{\partial f}{\partial x_n} \end{pmatrix}$ bezeichnet.
+Im Kontext des maschinellen Lernens wird mit Gradient oft die Werte des eigentlichen Gradienten zu einem bestimmten Punkt gemeint.
 [fn:feedforward] Bei einem Feed Forward Netzwerk fließen die Daten immer linear durch das Netz und werden zu keinem Zeitpunkt an vorherige Schichten geleitet.
 [fn:fullyconnected] Bei einem fully connected \ac{ANN} ist jedes Neuron aus Schicht $L$ mit allen Neuronen der Schicht $L+1$ verbunden.
 [fn:pdoc] Open Source Projekt zur Generierung von Dokumentation aus Python Modulen. (https://pdoc3.github.io/pdoc/)
@@ -754,6 +1658,16 @@ Mathematische Operationen, wie Matrix Multiplikation sind in C implementiert und
 [fn:hidden] Schichten eines Modells mit denen der Nutzer keine direkte Interaktion hat, werden als hidden bezeichnet.
 Beispielsweise wären in einem sequentiellen Modell mit $4$ Schichten, Layer $2$ und $3$ hidden.
 [fn:github] https://github.com/sirbubbls/pruning-ba
+[fn:evaluation_loss] Unter dem Evaluation Loss versteht man die Accuracy, die ein Modell auf einem Test Datensatz erzielt.
+Dabei wurde das Modell nicht auf dem Datensatz trainiert und kennt diesen somit auch nicht.
+Meist ist der Evaluation Loss die aussage-kräftigste Metrik über die Qualität eines KI Modells.
+[fn:training_loss] Der Training-Loss eines Modells beschreibt, wie gut die Accuracy das Modells auf dem Trainings-Datensatz ist.
+[fn:glow] https://github.com/pytorch/glow
+[fn:hyperparameter] Parameter wie ~learning_rate~, die auf das Training Auswirkungen haben können.
+[fn:hyperparameter-tuning] Das justieren der Hyperparameter um ein möglichst gutes Modell durch Training zu erhalten.
+[fn:pypi] https://pypi.org
+[fn:gh_condense] Das GitHub Verzeichnis des unter dieser Arbeit entwickelten Frameworks (https://github.com/sirbubbls/condense)
+[fn:pip] Package Installer for Python ~pip~ (https://pypi.org/project/pip/)
 [fn:_]
 
 bibliography:references.bib
