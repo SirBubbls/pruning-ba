@@ -11,7 +11,7 @@
 #+LATEX_HEADER: \usepackage{acronym}
 #+STARTUP: showall
 #+STARTUP: hideblocks
-#+TOC: tables
+#+TOC: nil
 
 # Title Page
 #+begin_src emacs-lisp :exports results :results none :eval export
@@ -34,6 +34,16 @@
      "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
      "\\end{titlepage}\n"))
 #+end_src
+
+#+BEGIN_ABSTRACT
+\begin{abstract}
+Diese Arbeit beschreibt Erkenntnisse und den Prozess der Entwicklung des Python Pruning Frameworks Condense (github.com/sirbubbls/condense) für künstliche neuronale Netze.
+Dabei werden Methoden von Pruning Techniken und deren Auswirkungen erläutert.
+Verschiedenste Design Entscheidungen und Anwendungen des unter dieser Arbeit entwickelten Frameworks erklärt und auf allgemeine Erkenntnisse hingewiesen.
+\end{abstract}
+#+END_ABSTRACT
+
+#+TOC: tables
 
 # Abbildungsverzeichnis
 #+BEGIN_LATEX
@@ -160,26 +170,37 @@ Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimm
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
-from scripts import quad_plot
 import sys
 sys.path.append('./condense')
-from condense.optimizer.layer_operations.weight_prune import w_prune_layer
+import condense
+import matplotlib.pyplot as plt
+
 model = keras.models.load_model('./resources/models/iris.h5')
 layer = 1
-quad_plot(w_prune_layer(model.get_weights()[0::2][layer], .85),
-          model.get_weights()[0::2][layer],
-          './resources/plots/iris-weight-pruning.png')
-return './resources/plots/iris-weight-pruning.png'
+
+plt.figure(figsize=(10, 3))
+
+plt.subplot(121)
+plt.imshow(abs(model.get_weights()[layer*2]), cmap='inferno', vmax=0.4)
+plt.title('Ungepunter Kernel eines Layers')
+model.build()
+pruned = [condense.optimizer.layer_operations.weight_prune.w_prune_layer(weight, (perc := 0.85)) for weight in model.get_weights()]
+model.set_weights(pruned)
+plt.subplot(122)
+plt.imshow(abs(model.get_weights()[layer*2]), cmap='inferno', vmax=0.4)
+plt.title(f'Kernel mit {perc*100}% sparsity')
+plt.tight_layout()
+plt.savefig('./resources/plots/simple-pruning.png')
+return './resources/plots/simple-pruning.png'
 #+END_SRC
 
 #+LABEL: fig:naiveweightpruning
 #+CAPTION[Visualisierung von Weight Pruning]:
 #+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
 #+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
-#+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt.
-#+RESULTS[ab87174a1c51a0676afdc27b4d18b3dda9742200]:
-[[file:./resources/plots/iris-weight-pruning.png]]
-
+#+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt. cite:fisher36lda
+#+RESULTS[f1da55ec2e6ff2cbe9f43d6f7fa78e44cbe49ee5]:
+[[file:./resources/plots/simple-pruning.png]]
 
 Analog zu dem Pruning der Verbindungen existiert auch Neuron-Pruning, also das entfernen ganzer Neuronen und deren Verbindungen aus dem \ac{ANN}.
 Dies wird in Abbildung ref:fig:naiveneuronpruning durch die Visualisierung eines Layers vor und nach Neuron-Pruning gezeigt.
