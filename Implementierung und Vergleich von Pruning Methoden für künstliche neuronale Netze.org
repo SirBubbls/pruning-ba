@@ -488,11 +488,12 @@ In Tabelle ref:tab:dataset sind alle in dieser Arbeit verwendeten Datensätze ge
 
 #+LABEL: tab:dataset
 #+CAPTION[In dieser Arbeit verwendeten Datensätze]: Eine Liste von, in dieser Arbeit vewendeten Datensätzen.
-| Datensatz                     | Beschreibung | Quelle                                       |
-|-------------------------------+--------------+----------------------------------------------|
-| Iris Dataset cite:fisher36lda |              | https://archive.ics.uci.edu/ml/datasets/iris |
-| ImageNet cite:imagenet_cvpr09                     |              | http://www.image-net.org                     |
-| ImageNet V2                   |              | https://github.com/modestyachts/ImageNetV2   |
+| Datensatz                                            | Beschreibung | Quelle                                       |
+|------------------------------------------------------+--------------+----------------------------------------------|
+| Iris Dataset cite:fisher36lda                        |              | https://archive.ics.uci.edu/ml/datasets/iris |
+| ImageNet cite:imagenet_cvpr09                        |              | http://www.image-net.org                     |
+| ImageNet V2                                          |              | https://github.com/modestyachts/ImageNetV2   |
+| MNIST cite:lecun-gradientbased-learning-applied-1998 |              | http://yann.lecun.com/exdb/mnist/            |
 
 * Implementierung
 ** Sparsity Mask <<sparsity_mask>>
