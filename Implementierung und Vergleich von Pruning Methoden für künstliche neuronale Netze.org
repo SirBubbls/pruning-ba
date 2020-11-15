@@ -673,7 +673,7 @@ return 'resources/plots/one-shot-random.png'
 #+CAPTION[Visualisierung von One Shot Pruning]: Visualisierung von One Shot Pruning mit verschiedenen Thresholds $t$.
 #+CAPTION: Die das Pruning durchführende Operation ~w[w < t] = 0~ setzt alle sich in der Maske ~w < t~ befindenden Felder der Matrix auf $0$.
 #+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-)Funktion ersetzt werden.
-#+RESULTS[21ff15ac885246e704d3550b609f135c8edfd96e]:
+#+RESULTS[e31988325076586e7bff351029260fa878d4cd85]:
 [[file:resources/plots/one-shot-random.png]]
 
 Das Modul ~condense~ bietet dabei mehrere verschiedene Implementationen und Schnittstellen für Nutzer um Datenstrukturen zu prunen.
@@ -1072,7 +1072,7 @@ return 'resources/plots/keras-2.png'
 
 #+CAPTION: Training-Loss des Modells mit pruning und ohne.
 #+ATTR_LATEX: :float wrap :width 8cm :center nil
-#+RESULTS[c843eb90e533d65b93173bee9fa04a5247eac527]:
+#+RESULTS[a4f518ecb23fc697566f978a7f12547bb0bbc26f]:
 [[file:resources/plots/keras-2.png]]
 
 Eine Möglichkeit ein Modell während des Trainings-Prozesses zu prunen ist die jeweilig zu prunenden Parameter nach bestimmten Trainingsabschnitten immer wieder erneut zu prunen.
@@ -1220,7 +1220,7 @@ return 'resources/plots/iris-accuracy-1.png'
 #+LABEL: fig:iris-results-one-shot
 #+CAPTION[One-Shot Pruning Accuracy eines Dense Modells]: Dense Model Accuracy mit zunehmender Pruning Stärke.
 #+ATTR_LaTeX: :height 5cm :placement [!htpb]
-#+RESULTS[05bfe488e6deb3369cdd62e1398ff7fdb1ac4f60]:
+#+RESULTS[066034f98af50c842543c2d7c7bc5bef23414868]:
 [[file:resources/plots/iris-accuracy-1.png]]
 
 *** Convolutional Model
@@ -1630,8 +1630,75 @@ return './resources/plots/resnet50_hist.png'
 #+END_SRC
 
 #+CAPTION[ResNet50 Weight Matrix Histogramm]: ResNet50 Weight Matrix Histogramm
-#+RESULTS[2b4f93e360e78cf2184b4f9ba587edd4bc1947a4]:
+#+RESULTS[78171136576c486b045dda83dae5c98ed02b5565]:
 [[file:./resources/plots/resnet50_hist.png]]
+
+*** ResNet-50 cite:altenberger18:_non_techn_survey_deep_convol
+In diesem Beispiel wird ein \ac{ANN} Modell der ~ResNet-50~ cite:altenberger18:_non_techn_survey_deep_convol Architektur,
+trainiert auf dem ImageNet cite:imagenet_cvpr09 Datensatz, durch One-Shot Pruning immer stärker optimiert.
+Der dadurch resultierende Verlust von Test-Accuracy ist in Abbildung ref:fig:resnet50-one-shot-accuracy visualisiert.
+Aus dem linearen Anstieg von Accuracy-Verlust in Abhängigkeit der Ansteigen Parameter-Sparsity,
+lässt sich eine hohe Informationsdichte schlussfolgern.
+Demnach bietet sich ~ResNet-50~ nicht als Modell für Pruning Optimierungen an.
+Diese Resultate werden auch im wissenschaftlichen Artikel 'The Lottery Ticket Hypothesis' cite:Frankle2018 festgestellt.
+
+#+BEGIN_SRC python :results file :exports results :cache yes
+import numpy as np
+import matplotlib.pyplot as plt
+from random import choice
+from datasets import imagenet
+from keras.applications.resnet50 import ResNet50
+from torch.utils.data import DataLoader
+from keras.applications.imagenet_utils import preprocess_input, decode_predictions
+from glob import glob
+from PIL import Image
+import keras
+import sys
+sys.path.append('condense')
+import condense
+
+DATA = '/Users/lucas/Dropbox/FH-Landshut Courses/Bachelor Arbeit/resources/datasets/imagenet/'
+def test_data_generator():
+    while True:
+        label = choice(glob(f'{DATA}*/')).split('/')[-2]
+        im = Image.open(choice(glob(f'{DATA}/{label}/*')))
+        im = im.resize((224, 224))
+        im = preprocess_input(np.asarray(im))
+        y = np.zeros((1, 1000))
+        y[0, int(label)] = 1.0
+        X = np.array([im])
+        yield X, y
+
+gen = test_data_generator()
+def evaluate(model):
+    correct = 0
+    X, y = [], []
+    for _ in range(150):
+        _X, _y = next(gen)
+        X.append(_X)
+        y.append(_y)
+    X = np.array(X).reshape(150, 224, 224, 3)
+    y = np.array(y).reshape(150, 1000)
+    return np.mean(keras.losses.categorical_crossentropy(model.predict(X), y))
+
+rang = np.arange(0, .99, .3)
+acc = [evaluate(condense.one_shot(ResNet50(weights='imagenet'), acc)) for acc in rang]
+plt.figure(figsize=(8, 3))
+plt.plot(rang*100, acc)
+plt.grid()
+plt.xlabel('Sparsity Percentage')
+plt.ylabel('Model Accuracy')
+plt.title('Test-Accuracy Verlust durch One-Shot Pruning (Resnet50)')
+plt.tight_layout()
+plt.savefig('resources/plots/resnet50-one-hot.png')
+return 'resources/plots/resnet50-one-hot.png'
+#+END_SRC
+
+#+LABEL: fig:resnet50-one-shot-accuracy
+#+CAPTION[Verlust von Test-Accuracy durch One-Shot Pruning]: Verlust von Test-Accuracy durch One-Shot Pruning.
+#+ATTR_LATEX: :float wrap :width 8cm :center nil
+#+RESULTS[62cef4f7607137fd47367e4a6b6e2ef7d29e04d3]:
+[[file:resources/plots/resnet50-one-hot.png]]
 
 * Fazit
 ** Kapitalisierung von Sparsity in neuronalen Netzen <<kapit>>
