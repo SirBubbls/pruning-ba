@@ -1716,8 +1716,30 @@ Durch das von ~GLOW~ genutzte ~LLVM~ Backend, lassen sich Optimierungen auf dem 
 Besonders für die Entwicklung auf Embedded Devices ist dieses Tool sehr relevant, jedoch bietet es auch äußerst viel-versprechende Optimierungen für Sparse \ac{ANN} Modelle cite:Lewis2018.
 
 * Ausblick
+
 ** Weiterentwicklung des Frameworks
+Da die leichte Weiterentwicklung des Frameworks bereits zu Beginn eine wichtige Designanforderung des Projektes war,
+ist die Implementierung weiterer Funktionalität ausgesprochen erstrebenswert.
+Mögliche Aufgaben für die weitere Entwicklung wären beispielsweise:
+- Implementierung weiterer Sparsity/Masking Funktionen
+- allgemeine Verbesserungen der Effizienz verschiedener Operationen des Frameworks
+- Unterstützung weiterer \ac{ML} Frameworks und Bibliotheken
+- Weitere Ausarbeitung der Dokumentation
+- Refactoring kleinerer Teile des Moduls
+- weitere Automatisierungen
+
+Jedoch muss auch erwähnt werden, dass das Projekt auch ohne weitere Entwicklung für \ac{ML} Projekte definitiv benutzbar ist.
+
 ** Forschung
+Neural Network Optimierung und insbesondere Pruning ist ein sehr komplexes und unerforschtes Themengebiet und bietet dementsprechend auch
+erhebliches Potential für weitere wissenschaftliche Erkenntnisse.
+Besonders die Generierung von Parameter/Sparsity Masken bietet großes Potential für weitere Verbesserungen der Pruning-Effizienz.
+Zudem wäre es sehr interessant, weitere Tests des Pruning Frameworks auf verschiedenen evtl. nicht standard \ac{ANN} Architekturen durchzuführen.
+Eventuell können so neue Erkenntnisse über das Pruning Potential verschiedener \ac{ANN} Architekturen gesammelt werden.
+
+Besonders erwähnenswert ist die weitere Forschung im Bereich der spezialisierten Hardware.
+Wie in Kapitel ref:kapit bereits angesprochen wurde, verspricht die Verwendung von für Sparsity Tensor optimierte Hardware enormes Leistungspotential cite:8735526.
+Eventuell lässt sich auch durch spezialisierte Software Lösungen ein ähnlicher Leistungsanstieg verzeichnen.
 
 #+LATEX: \printbibliography
 
