@@ -1,7 +1,7 @@
 #+TITLE: Implementierung und Vergleich von Pruning Methoden für künstliche neuronale Netze
 #+AUTHOR: Lucas Sas Brunschier
 #+DESCRIPTION: Bachelor Arbeit
-#+DATE: XX.XX.2020
+#+DATE: 10.12.2020
 #+LATEX_CLASS: report
 #+language: de
 #+LATEX_HEADER: \usepackage[ngerman]{babel}
@@ -9,6 +9,14 @@
 #+LATEX_HEADER: \usepackage[backend=bibtex, style=numeric] {biblatex}
 #+LATEX_HEADER: \addbibresource{references.bib}
 #+LATEX_HEADER: \usepackage{acronym}
+#+LATEX_HEADER: \usepackage{pdfpages}
+#+LATEX_HEADER: \renewcommand\thepart{\arabic{part}}
+#+LATEX_HEADER: \let\part\chapter
+#+LATEX_HEADER: \let\chapter\section
+#+LATEX_HEADER: \let\section\subsection
+#+LATEX_HEADER: \let\subsection\subsubsection
+
+
 #+STARTUP: showall
 #+STARTUP: hideblocks
 #+TOC: nil
@@ -24,7 +32,7 @@
      "{\\par \\LARGE Hochschule für angewandte Wissenschaften Landshut}\n"
      "\\vspace{0.6cm}"
      "{\\par \\Large Fakultät Informatik} \\vspace{1.2cm}\n"
-     "{\\par \\Huge \\bf Bachelor Thesis} \\vspace{1cm}\n"
+     "{\\par \\Huge \\bf Bachelor Arbeit} \\vspace{1cm}\n"
      "{\\par \\LARGE %t } \\vspace{1cm}\n"
      "{\\par \\Large \\it von %a} \\vspace{0.2cm}\n"
      "{\\par Matrikel-Nr.: 1088709} \\vspace{1cm} \n"
@@ -34,14 +42,6 @@
      "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
      "\\end{titlepage}\n"))
 #+end_src
-
-#+BEGIN_ABSTRACT
-\begin{abstract}
-Diese Arbeit beschreibt Erkenntnisse und den Prozess der Entwicklung des Python Pruning Frameworks Condense (github.com/sirbubbls/condense) für künstliche neuronale Netze.
-Dabei werden Methoden von Pruning Techniken und deren Auswirkungen erläutert.
-Verschiedenste Design Entscheidungen und Anwendungen des unter dieser Arbeit entwickelten Frameworks erklärt und auf allgemeine Erkenntnisse hingewiesen.
-\end{abstract}
-#+END_ABSTRACT
 
 #+TOC: tables
 
@@ -55,7 +55,7 @@ Verschiedenste Design Entscheidungen und Anwendungen des unter dieser Arbeit ent
 # Abkürzungsverzeichnis
 #+BEGIN_LATEX
 \begin{acronym}[Bash]
-\acro{ANN}{künstliches neuronales Netz}
+\acro{ANN}{artificial neural network}
 \acro{TF}{Tensor Flow}
 \acro{ML}{Machine Learning oder zu deutsch maschinellen Lernen}
 \acro{GPU}{Graphics Processing Unit}
@@ -64,36 +64,45 @@ Verschiedenste Design Entscheidungen und Anwendungen des unter dieser Arbeit ent
 \newpage
 #+END_LATEX
 
+#+BEGIN_ABSTRACT
+\begin{abstract}
+Diese Arbeit beschreibt den Entwicklungsprozess und die Erkenntnisse des Python Pruning Frameworks \textbf{Condense} (github.com/sirbubbls/condense) für künstliche neuronale Netze.
+Dabei werden Methoden von Pruning-Techniken und deren Auswirkungen erläutert, sowie verschiedenste Designentscheidungen und Anwendungen des unter dieser Arbeit entwickelten Frameworks erklärt und auf allgemeine Erkenntnisse hingewiesen.
+Durch impirische Beispiele wird gezeigt, dass sich nicht bereits optimierte Modelle bestens durch Pruning-Methoden verbessern lassen und
+somit eine hohe Parameter Sparsity mit minimalem Accuracy Verlust des künstlichen neuronalen Netzes erzeugt werden kann.
+\end{abstract}
+#+END_ABSTRACT
+
 * Einleitung
 ** Neuronale Netze
 
-Bei dem Forschungsbereich der neuronalen Netze handelt es sich um eine Teilmenge des Bereichs der künstlichen Intelligenz.
+Bei dem Forschungsbereich der neuronalen Netze handelt es sich um einen Sektor im Bereichs der künstlichen Intelligenz.
 Genauer lassen sich künstliche neuronale Netze als einen Teil des maschinellen Lernens einordnen.
-Die Inspiration für \acp{ANN} kommt ursprünglich aus der Biologie und der dort vorkommenden neuronalen Verbindungen in Nervensystemen von Lebewesen.
+Die Inspiration für ein \ac{ANN} kommt ursprünglich aus der Biologie und den dort vorkommenden neuronalen Verbindungen in Nervensystemen von Lebewesen.
 Jedoch sind die Forschungsgebiete zu neuronalen Netzen aus der Biologie und der Informatik/Mathematik zum Großteil disjunkt.
 cite:10.5555/3086952
 
 #+LABEL: fig:network
 #+CAPTION[Diagramm eines künstlichen neuronalen Netzes]: Diagramm eines fully connected \ac{ANN}, mit einem Hidden Layer (hier blau gekennzeichnet).
-#+CAPTION: Es ist gut zu erkennen, wie benachbarte Schichten
+#+CAPTION: Es ist gut zu erkennen, wie künstliche Neuronen benachbarter Schichten vollständig miteinander verbunden sind.
 #+CAPTION: [[https://commons.wikimedia.org/wiki/File:NeuralNetwork.png][[quelle]​]]
-#+ATTR_LATEX: :float wrap :width 8cm :center nil
+#+ATTR_LATEX: :float wrap :width 7.5cm :center nil
 [[./resources/neural_network.png]]
 
 *** Historisches
 Obwohl \ac{ANN}'s erst ca. 2008 ihre Blütezeit erreicht haben, ist die zu Grunde liegende Technologie bereits seit
 Mitte bis Ende des 20. Jahrhunderts bekannt.
-So schuf Frank Rosenblatt im Jahre 1975 das in Abbildung ref:fig:perceptron dargestellte Modell eines Perceptrons cite:werbos1975beyond, eine
-mathematische Abstraktion des aus der Biologie bekannten Neuron.
-Das Perceptron wird bis heute als Modell für ein alleinstehendes Neuron in einem \ac{ANN} verwendet.
-In dem kommenden Kapitel [[perceptron]] wird noch im Detail auf das Modell des Perceptrons eingegangen.
+So schuf Frank Rosenblatt im Jahre 1975 das in Abbildung ref:fig:perceptron dargestellte Modell eines Perceptrons cite:werbos1975beyond.
+Unter einem Perceptron versteht man die mathematische Abstraktion des aus der Biologie bekannten Neurons.
+Dieses wird bis heute als Modell für ein alleinstehendes Neuron in einem \ac{ANN} verwendet.
+In dem folgenden Kapitel [[perceptron]] wird noch im Detail auf das Modell des Perceptrons eingegangen.
 Der Backpropagation Algorithmus, bei dem es sich um eine Implementation der Kettenregel zur automatischen Differenzierung
 von Parametern eines \ac{ANN} handelt, wurde im Jahre 1986 publiziert cite:Rumelhart_1986.
 Auch heute erweist sich der Backpropagation Algorithmus als eine sehr effiziente Methode die Gradienten[fn:gradient] eines \ac{ANN}'s zu berechnen und
-findet beinahe unverändert Einsatz in verschiedensten modernen Deep Learning Frameworks.
-Eine häufige Fehlinformation die über den Backpropagation Algorithmus verbreitet wird, ist dieser sei für das "Lernen" des neuronalen Netzes
+findet beinahe unverändert Einsatz in verschiedensten modernen Deep-Learning-Frameworks.
+Eine häufige Fehlinformation die über den Backpropagation Algorithmus verbreitet wird, ist, dieser sei für das "Lernen" des neuronalen Netzes
 verantwortlich.
-Dies ist inkorrekt, da eigentlich der Gradient Descent Algorithmus cite:Curry_1944 die von dem Backpropagation berechneten Gradienten nutzt um
+Dies ist inkorrekt, da eigentlich der Gradient Descent Algorithmus cite:Curry_1944 die von dem Backpropagation berechneten Gradienten nutzt, um
 die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wird.
 
 *** Strukturelle Beschaffenheit von neuronalen Netzen <<netstruct>>
@@ -101,24 +110,24 @@ die Parameter des Netzes so zu manipulieren, dass der Loss[fn:loss] minimiert wi
 In diesem Kapitel wird ausschließlich der Aufbau eines fully connected[fn:fullyconnected] feed forward[fn:feedforward] neural networks behandelt.
 #+end_quote
 Ein \ac{ANN} besteht primär aus mehreren Schichten (Layern) $L_1, \dots, L_n$.
-Bei dem ersten Layer $L_1$ handelt es sich um den so genannten Input Layer, der für die Aufnahme von Eingabedaten zuständig ist.
+Bei dem ersten Layer $L_1$ handelt es sich um den sogenannten Input Layer, der für die Aufnahme von Eingabedaten zuständig ist.
 Analog fungiert dieser als Eingabe-Interface des neuronalen Netzes für den Anwender des \acp{ANN}.
 So erwartet ein Input-Layer mit $8$ Neuronen einen Input Vektor von $8$ Werten.
 Schichten $L_2, \dots, L_{n-1}$ werden als Hidden-Layer des neuronalen Netzes bezeichnet, da diese für den Außenstehenden nicht direkt einsichtig sind.
 Die letzte Schicht des \acp{ANN}, $L_n$ ist der Output-Layer des Netztes und dient als zweites Interface für den Nutzer.
-In Abbildung ref:fig:network lässt sich die Architektur eines einfachen Feed Forward[fn:feedforward] Networks und dessen Layer klar erkennen.
+In Abbildung ref:fig:network lässt sich die Architektur eines einfachen Feedforward[fn:feedforward] Networks und dessen Layer klar erkennen.
 cite:10.5555/3086952
 
 *** Das Perceptron <<perceptron>>
 Ein Perceptron ist ein Modell, das eine Reihe von Eingabedaten (Inputs) $a$ auf einen gemeinsamen Output $y$ nach der Form  $\mathbb{R}^n \rightarrow \mathbb{R}$ abbildet.
 Die verschiedenen Inputs $a^n$ werden durch Gewichtungen $w^n$ verschieden stark gewichtet, also $a_1 \times w_1 + \dots + a_n \times w_n = y$ oder in Vektorschreibweise $a \times w^T = y$.
-In heutigen State of the Art Deep Learning Frameworks enthält das Perceptron zusätzlich noch eine nicht-lineare Komponente in der Form einer Aktivierungsfunktion $\sigma$.
+Auf dem heutigen Stand der Entwicklung des Deep-Learning-Frameworks enthält das Perceptron zusätzlich noch eine nicht-lineare Komponente in der Form einer Aktivierungsfunktion $\sigma$.
 Einige der häufig eingesetzten Aktivierungsfunktionen können in Tabelle ref:tab:aktivierungsfunktion gefunden werden.
 In Kapitel ref:activations dieser Arbeit, wird noch im Genaueren auf Zusammenhänge zwischen Aktivierungsfunktion und Sparsity[fn:sparsity] eines \ac{ANN} Modells eingegangen.
 cite:Rosenblatt_1958
 
 #+LABEL: tab:aktivierungsfunktion
-#+CAPTION[Populäre Aktivierungsfunktionen]: Aktivierungsfunktionen enthalten meist eine nicht-linearität, die nötig ist um neuronale Netze
+#+CAPTION[Populäre Aktivierungsfunktionen]: Aktivierungsfunktionen enthalten meist eine Nichtlinearität, die nötig ist, um neuronale Netze
 #+CAPTION: auf nicht lineare Zusammenhänge in Datensätzen trainieren zu können.
 | Name                  | Funktion                                                        |
 |-----------------------+-----------------------------------------------------------------|
@@ -126,7 +135,7 @@ cite:Rosenblatt_1958
 | Tangens Hyperbolicus  | $\frac{(e^x-e^{-x})}{(e^x+e^{-x})}$                             |
 | Rectified Linear Unit | $f(x)= \begin{cases} 0\ for\ x\leq0 \\ x\ for\ x>0 \end{cases}$ |
 
-Ein Perceptron kann statt in einem grafischen Modell visualisiert zu werden auch als eine mathematische Funktion eqref:eq:percept behandelt werden.
+Ein Perceptron kann, statt in einem grafischen Modell visualisiert zu werden, auch als eine mathematische Funktion eqref:eq:percept behandelt werden.
 
 \begin{equation}f(a, w)=\sigma(a\times w^T)=y \label{eq:percept}\end{equation}
 
@@ -149,24 +158,27 @@ Im Allgemeinen kann dies in der Form eqref:eq:net ausgedrückt werden.
 \begin{equation} {f_n(\dots (f_1(x)))=y \ \ \ \label{eq:net} \end{equation}
 
 #+BEGIN_QUOTE
-In anderen Layer-Architekturen wie Recurrent oder LSTM ist es durchaus möglich Daten auch an vorherige Layer abzugeben.
+In anderen Layer-Architekturen wie Recurrent cite:Rumelhart_1986 oder LSTM cite:Hochreiter_1997 ist es durchaus möglich Daten auch an vorherige Layer abzugeben.
 Diese Architekturen sind jedoch nicht Teil dieser Arbeit.
 #+END_QUOTE
 Die Möglichkeit ein \ac{ANN} als eine Verkettung von Funktionen formulieren zu können ist essentiell um Algorithmen wie Backpropagation zur
 Differenzierung von Parametern nutzen zu können.
+** Pruning
 
-** Einführung in naive Pruning Methoden für künstliche neuronale Netze
+*** Einführung in naive Pruning Methoden für künstliche neuronale Netze
 
-Es lässt sich durch Beobachtung der künstlichen neuronalen Netze der letzten Jahre feststellen,
+Durch die Beobachtung der künstlichen neuronalen Netze in den letzten Jahren lässt sich feststellen,
 dass die Komplexität und die damit einhergehende Anzahl von Neuronen und deren Verbindungen immer weiter zunehmen. cite:altenberger18:_non_techn_survey_deep_convol
 Gleichzeitig werden diese komplexeren und größeren \ac{ANN} Architekturen auch auf schwächeren eingebetteten Geräten eingesetzt.
-Dadurch werden Optimierungen an neuronalen Netzen immer relevanter, da dies Inferenz-Zeit und Modellgröße minimieren kann.
-Verfahren wie Quantisierung können die Laufzeit und den Speicherverbrauch von \ac{ANN}'s deutlich verbessern, jedoch können auch
-Pruning Verfahren massive Verbesserungen versprechen. cite:Frankle2018
-Pruning Verfahren versuchen durch das Entfernen von Verbindungen oder auch ganzen Neuronen, die Sparsity eines Modells zu erhöhen.
-Weight oder auch Connection Pruning bezeichnet den Vorgang Verbindungen aus einem \ac{ANN} zu entfernen.
-Dabei werden die Verbindungen eliminiert, also mit $0$ gewichtet. Die ist in Abbildung ref:fig:naiveweightpruning dargestellt.
-Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimmt, eine Heuristik könnte beispielsweise die niedrigst gewichteten Verbindungen sein.
+\ac{ANN} Modelle die für selbstfahrende Autos eingesetzt werden, sollten beispielsweise eine möglichst schnelle und effiziente Ausführung bieten.
+Durch diese schnellere Ausführung kann rascher auf Gefahrensituationen reagiert werden.
+Deshalb werden Optimierungen an neuronalen Netzen immer relevanter, da dies Inferenz-Zeit und Modellgröße minimieren kann.
+Verfahren wie Quantisierung können die Laufzeit und den Speicherverbrauch von \ac{ANN}'s deutlich verbessern;
+jedoch lassen sich auch durch Pruning-Verfahren massive Verbesserungen bezüglich Laufzeit und Speicherverbrauch erzielen. cite:Frankle2018
+Pruning-Verfahren versuchen durch das Entfernen von Verbindungen oder auch ganzen Neuronen, die Sparsity eines Modells zu erhöhen.
+Als Weight- oder auch Connection-Pruning wird ein Vorgang bezeichnet, der Verbindungen aus einem \ac{ANN} entfernt.
+Dabei werden die Verbindungen eliminiert, also mit $0$ gewichtet. Dies ist in Abbildung ref:fig:naiveweightpruning dargestellt.
+Die ausgewählten Verbindungen oder Neuronen werden durch eine Heuristik bestimmt. Eine Heuristik könnte beispielsweise die niedrigst gewichteten Verbindungen sein.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
@@ -182,7 +194,7 @@ plt.figure(figsize=(10, 3))
 
 plt.subplot(121)
 plt.imshow(abs(model.get_weights()[layer*2]), cmap='inferno', vmax=0.4)
-plt.title('Ungepunter Kernel eines Layers')
+plt.title('Ungeprunter Kernel eines Layers')
 model.build()
 pruned = [condense.optimizer.layer_operations.weight_prune.w_prune_layer(weight, (perc := 0.85)) for weight in model.get_weights()]
 model.set_weights(pruned)
@@ -196,11 +208,12 @@ return './resources/plots/simple-pruning.png'
 
 #+LABEL: fig:naiveweightpruning
 #+CAPTION[Visualisierung von Weight Pruning]:
-#+CAPTION: In diesem hier dargestellten Dense Layers eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
+#+CAPTION: In diesem hier dargestellten Dense Layer eines neuronalen Netzes, wurde die Sparsity des Modells durch Pruning der Verbindungen auf $85\%$ erhöht.
 #+CAPTION: Jeder Pixel repräsentiert dabei eine Verbindung von Neuron zu Neuron in einem \ac{ANN}.
-#+CAPTION: Es ist gut zu beobachten, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden, hier durch schwarze Pixel zu erkennen.
-#+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt. cite:fisher36lda
-#+RESULTS[f1da55ec2e6ff2cbe9f43d6f7fa78e44cbe49ee5]:
+#+CAPTION: Es ist gut zu sehen, wie nur leicht gewichtete Verbindungen durch Pruning deaktiviert werden (hier durch schwarze Pixel zu erkennen).
+#+CAPTION: Dabei schadet diese Operation meist der Accuracy des Modells.
+#+CAPTION: Bei dem Netz handelt es sich um ein durch TensorFlow 2.0 cite:Bisong_2019 trainiertes Modell. Bei dem Training wurde der Iris Datensatz genutzt. cite:fisher36lda
+#+RESULTS[1a5c84b8f9bca2339b02bfada60a980efb193c0b]:
 [[file:./resources/plots/simple-pruning.png]]
 
 #+BEGIN_SRC python :exports results :results file :cache yes
@@ -213,13 +226,18 @@ import matplotlib.pyplot as plt
 model = keras.models.load_model('./resources/models/iris.h5')
 layer = 1
 
+xl = 'Neuron Gewichtung'
+yl = 'Anzahl'
+
 plt.figure(figsize=(10, 3))
 model.build()
 plt.subplot(121)
 X = model.get_weights()[layer*2].flatten()
 X = X[X != 0]
 plt.hist(X, density=True, rwidth=.5, bins=70)
-plt.title('Ungepunter Kernel eines Layers')
+plt.xlabel(xl)
+plt.ylabel(yl)
+plt.title('Ungeprunter Kernel eines Layers')
 pruned = [condense.optimizer.layer_operations.weight_prune.w_prune_layer(weight, (perc := 0.85)) for weight in model.get_weights()]
 model.set_weights(pruned)
 plt.subplot(122)
@@ -227,21 +245,26 @@ X = model.get_weights()[layer*2].flatten()
 X = X[X != 0]
 plt.hist(X, rwidth=.5, bins=70)
 plt.title(f'Kernel mit {perc * 100}% sparsity')
+plt.xlabel(xl)
+plt.ylabel(yl)
 plt.tight_layout()
 plt.savefig('./resources/plots/simple-pruning-hist.png')
 return './resources/plots/simple-pruning-hist.png'
 #+END_SRC
 
-#+CAPTION: Histogramm der Weight Verteilung nach Pruning
-#+RESULTS[baeb75d12efcc3d62cab14ad65b7b589a832050b]:
+#+CAPTION[Histogramm der Weight Verteilung nach Pruning]: Nach dem in ref:fig:naiveweightpruning gezeigten Weight Pruning,
+#+CAPTION: verändert sich die Verteilung der Gewichtswerte. Dabei werden die Gewichtungen im Bereich $[-x;x]$ mit $x$ als Threshold eliminiert.
+#+CAPTION: Hier wird $x$ so gewählt, dass $\sim 85\%$ der Verbindungen innerhalb des Netzes eliminiert werden, um eine dementsprechende Model-Sparsity zu erreichen.
+#+RESULTS[6a53703a855e51ff1154db65792a935831dd2b47]:
 [[file:./resources/plots/simple-pruning-hist.png]]
 
-** Heuristiken zur Bestimmung von zu prunenden Parametern
-Es gibt verschiedenste Heuristiken um Parameter zu bestimmen, die wohl am nächstliegendsten sind Unit- und Weight-Pruning.
+*** Heuristiken zur Bestimmung von zu prunenden Parametern
+Es gibt verschiedenste Heuristiken um die zu prunenden Parameter[fn:parameter] eines Modells zu wählen.
+Die wohl am nächstliegendsten sind Unit- und Weight-Pruning.
 Die Weight-Pruning Heuristik wählt jeweils die am niedrigst gewichtetsten Gewichtungen eines Layers oder des ganzen Modells aus.
-In Abbildung ref:fig:naiveweightpruning ist der in der Grafik visualisierte Layer Kernel durch einfaches Weight-Pruning auf $85\%$ Sparsity optimiert worden.
-Die Auswahl der Verbindungen (visualisiert durch jeweils einen Pixel) folgt dabei keinem spezifischen Muster, da sich die Heuristik ausschließlich
-auf die absoluten Gewichtung jeder Verbindung bezieht.
+In Abbildung ref:fig:naiveweightpruning ist der in der Grafik dargestellte Layer Kernel durch einfaches Weight-Pruning auf $85\%$ Sparsity optimiert worden.
+Die Auswahl der Verbindungen (veranschaulicht durch jeweils ein Pixel) folgt dabei keinem spezifischen Muster, da sich die Heuristik ausschließlich
+auf die absolute Gewichtung jeder Verbindung bezieht.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
@@ -272,32 +295,33 @@ return './resources/plots/iris-unit-pruning.png'
 #+RESULTS[e7ab1be8e0a42dd70c420d41d96c2a07c8f51b4c]:
 [[file:./resources/plots/iris-unit-pruning.png]]
 
-Etwas anders funktioniert Neuron/Unit-Pruning, dabei wird nicht jede Gewichtung einzeln betrachtet, sondern die Summe aller Gewichtungen $w$ eines Neurons $V$ also
+Etwas anders funktioniert Neuron/Unit-Pruning.
+Dabei wird nicht jede Gewichtung einzeln betrachtet, sondern die Summe aller Gewichtungen $w$ eines Neurons $V$ also
 $$
 \text{Gewichtung eines Neurons $V$}=\sum_{n=0}^V\ w_n.
 $$
-Das unterste $p\%$ aller Neuronen in einer Schicht, werden daraufhin aus dem Modell eliminiert. D.h. alle Gewichtungen der Neuronen werden auf $0$ gesetzt.
-Dies lässt sich in Abbildung ref:fig:naiveunitpruning, durch die schwarzen (eliminierten) vertikalen Linien in der Gewichtungs-Matrix gut erkennen.
+Die am niedrigst gewichteten Gewichtungen $p\%$ aller Neuronen in einer Schicht werden daraufhin aus dem Modell eliminiert. D.h. alle Gewichtungen der Neuronen werden auf $0$ gesetzt.
+Dies lässt sich in Abbildung ref:fig:naiveunitpruning durch die schwarzen (eliminierten) vertikalen Linien in der Gewichtungs-Matrix gut erkennen.
 Unit-Pruning bietet sowohl Vorteile als auch Nachteile im Vergleich zu Weight-Pruning.
-Zum einen werden eventuell wichtige Verbindungen für das Modell aufgrund von Kollateralschaden eliminiert.
+Zum einen werden eventuell wichtige Verbindungen für das Modell durch Kollateralschaden eliminiert.
 Als Szenario wäre zum Beispiel denkbar, dass ein Neuron alle Input Variablen als schwach gewichtet sieht, jedoch auf gerade einen oder zwei sehr sensibel reagiert.
-Eventuell kann gerade diese Reaktion auf diesen Input sehr wichtig für nachfolgende Schichten sein.
-Durch Unit Pruning würde dieses Neuron vermutlich aus dem Modell gestrichen werden, da die Summe aller Gewichtungen in diesem Neuron nicht sehr signifikant sein wird.
-Weight-Pruning hingegen berücksichtigt diese eine sehr aktive Verbindung und wird nur auch tatsächlich schwache Gewichtungen streichen.
-Die Frage ob es überhaupt wünschenswert ist Neuronen in einem \ac{ANN} zu behalten, die so sensibel auf bestimmte Inputs reagieren steht natürlich auch noch im Raum.
+Doch eventuell kann gerade diese Reaktion auf diesen Input sehr wichtig für nachfolgende Schichten sein.
+Durch Unit-Pruning würde dieses Neuron vermutlich aus dem Modell gestrichen werden, da die Summe aller Gewichtungen in diesem Neuron nicht sehr signifikant sein wird.
+Weight-Pruning hingegen berücksichtigt diese eine sehr aktive Verbindung und wird auch nur tatsächlich schwache Gewichtungen streichen.
+Es stellt sich natürlich die Frage, ob es überhaupt wünschenswert ist, Neuronen, die so sensibel auf bestimmte Inputs reagieren, in deinem \ac{ANN} zu behalten.
 
-Einen enormen Vorteil, den Unit-Pruning mit sich bringt, ist die einfache Nutzung der Sparsity (genaueres zu diesem Thema in Kapitel ref:kapit)
+Einen enormen Vorteil, den Unit-Pruning mit sich bringt, ist die einfache Nutzung der Sparsity (Genaueres zu diesem Thema in Kapitel ref:kapit)
 die durch Unit-Pruning erzeugt wird. So ist es recht einfach möglich das Neuron nicht nur in der Weight-Matrix mit $0$ zu füllen, sondern dieses komplett
-aus der Matrix (oder Tensor) zu entfernen. So wird die Weight Matrix einer Schicht mit $12$ Neuronen und der Dimensionen $(12,6)$ (also $72$ Parameter)
+aus der Matrix (oder Tensor) zu entfernen. So wird die Weight-Matrix einer Schicht mit $12$ Neuronen und der Dimensionen $(12,6)$ (also $72$ Parameter)
 auf $(12, 5)$ (also $60$ Parameter) reduziert.
-Somit lässt sich durch die Entfernung eines Neurons direkt ca. $16\%$ Speicher sparen.
+Auf diese Weise lässt sich durch die Entfernung eines Neurons direkt ca. $16\%$ Speicher sparen.
 Die Sparsity die durch Weight-Pruning erzeugt wird, lässt sich sehr schwer nutzen, da es nicht möglich ist aus Matrizen oder Tensoren nur einzelne Werte zu eliminieren.
 Jede Dimension muss immer die gleiche Anzahl an Elementen enthalten.
 
-** Verlust von Accuracy durch Pruning
+*** Verlust von Accuracy durch Pruning
 Natürlich ist in den meisten Fällen ein Verlust von Genauigkeit des Netzes zu erwarten, wie in Abbildung ref:fig:naive-pruning-loss zu sehen ist.
 Jedoch kann durch empirisches Beobachten festgestellt werden, dass Pruning Eigenschaften eines Regularizers aufweist.
-So verschlechtert sich meist der Training-Loss[fn:training_loss] jedoch verbessert sich im Kontrast der Evaluation-Loss[fn:evaluation_loss] meist erheblich. (siehe Zitat ref:quo:regular).
+So verschlechtert sich meist der Training-Loss[fn:training_loss] jedoch verbessert sich im Gegensatz dazu der Evaluation-Loss[fn:evaluation_loss] meist erheblich cite:Frankle2018 (siehe Zitat ref:quo:regular).
 
 #+LABEL: quo:regular
 #+begin_quote
@@ -345,7 +369,7 @@ model = keras.models.load_model('./resources/models/iris.h5')
 baseline = model.evaluate(eva, steps=10)
 original_weights = deepcopy(model.get_weights())
 
-for i in (X := np.linspace(0.1, 0.95, 25)):
+for i in (X := np.linspace(0.001, 0.95, 25)):
     model.set_weights(original_weights)
     pruned_weights = [w_prune_layer(layer, i) for layer in model.get_weights()]
     pruned_weights[-1] = model.get_weights()[-1]
@@ -353,7 +377,7 @@ for i in (X := np.linspace(0.1, 0.95, 25)):
     x.append(calculate_model_sparsity(model.get_weights()))
     data.append(model.evaluate(eva, steps=10))
 
-plt.subplots(figsize=(6, 3))
+plt.subplots(figsize=(8, 3))
 plt.plot(X*100, np.array(data), label="Eval Loss")
 plt.plot(X*100, [baseline]*len(X), label="Base Eval Loss", ls='--')
 plt.legend()
@@ -367,28 +391,29 @@ return './resources/plots/iris-accuracy.png'
 
 #+LABEL: fig:naive-pruning-loss
 #+CAPTION[Verfall von Genauigkeit mit zunehmend aggressiverem Pruning]:
-#+CAPTION: In dieser Grafik wird das identische Modell aus Abbildung ref:fig:naiveweightpruning & ref:fig:naiveneuronpruning durch immer aggressiveres Weight-Pruning optimiert.
+#+CAPTION: In dieser Grafik wird das identische Modell aus Abbildung ref:fig:naiveweightpruning und ref:fig:naiveunitpruning durch immer aggressiveres Weight-Pruning optimiert.
 #+CAPTION: Wie sich beobachten lässt, verschlechtert sich die Genauigkeit mit zunehmender Stärke des Prunings rapide.
-#+ATTR_LATEX: :float wrap :width 8cm :center nil
-#+RESULTS[e8ea95281a7861c704c0a4b58c5c1163257e10d3]:
+#+CAPTION: Dabei beschreibt ~Base Eval Loss~ die Accuracy, die das ungeprunte Modell auf dem Evaluation Datensatz durch Training erreichen konnte.
+#+RESULTS[bb55e758208f479dee958588a0c36d666847c00e]:
 [[file:./resources/plots/iris-accuracy.png]]
 
 ** Industrierelevanz
-Pruning von künstlichen neuronalen Netzen bietet vielen Unternehmen die Möglichkeit Optimierungen an schon bestehenden \ac{ANN} Modellen vorzunehmen.
-Diese Optimierungen können unter Umständen ermöglichen komplexere Modelle auf schwächeren Computern zu nutzen.
-Beispielsweise eingebettete Geräte können dabei effizienter Daten durch neuronale Netze auswerten.
-Besonders in Situationen in denen das Modell möglichst schnell ein Prognose abgeben soll, wie beispielsweise bei Teilen von
-selbständig fahrenden Autos bietet Pruning Chancen auf enorme Verbesserungen.
-Zudem bietet Pruning eine Möglichkeit, \ac{ANN} Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
-Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN} Modellen einsetzbar machen.
+Pruning von künstlichen neuronalen Netzen bietet vielen Unternehmen die Möglichkeit, Optimierungen an schon bestehenden \ac{ANN} Modellen vorzunehmen.
+Diese Optimierungen ermöglichen es unter Umständen, komplexere Modelle auf schwächeren Computern zu nutzen.
+Beispielsweise können eingebettete Geräte dabei effizienter Daten durch neuronale Netze auswerten.
+Besonders in Situationen in denen das Modell möglichst schnell eine Prognose abgeben soll, wie beispielsweise bei Teilen von
+selbständig fahrenden Autos, bietet Pruning Chancen auf außerordentliche Verbesserungen.
+Zudem bietet Pruning eine Möglichkeit, \ac{ANN}-Modelle ohne signifikante Einbußen von Genauigkeit zu optimieren. cite:Frankle2018
+Dies sollte Pruning Methoden auf deutlich mehr \ac{ANN}-Modellen einsetzbar machen.
 
 ** Ziel dieser Arbeit <<ziel>>
 *** Erstellung eines Pruning Frameworks <<ziel_framework>>
-Ziel dieser Arbeit ist es primär ein Python Framework zu entwickeln, das mehrere verschiedene Typen von Pruning Methoden implementieren soll.
-Ein wichtiger Fokus sollte bei der Architektur des Framework sein, dies in Zukunft möglichst einfach erweitern zu können.
-Dokumentation der verschiedenen Module ist aus diesem Grund sehr wichtig und sollte im Laufe der Arbeit auch immer aktualisiert werden.
-Bei dem Design der Nutzer-Schnittstellen sollte auf eine möglichst einfachere und saubere Architektur geachtet werden,
-da auch Nutzer ohne ausgiebige Python Erfahrung im Stande sein sollte die Tools dieses Frameworks zu nutzen.
+Ziel dieser Arbeit ist es, primär ein Python Framework zu entwickeln, das mehrere verschiedene Typen von Pruning Methoden implementieren soll.
+Ein wichtiger Fokus liegt dabei auf der Architektur des Frameworks.
+Diese sollte in Zukunft möglichst einfach erweitert werden können.
+Die Dokumentation der verschiedenen Module ist aus diesem Grund sehr wichtig und sollte im Laufe der Arbeit auch immer aktualisiert werden.
+Bei dem Design der Nutzer-Schnittstellen sollte auf eine möglichst einfache und saubere Architektur geachtet werden,
+da auch Nutzer ohne ausreichende Erfahrung mit Python im Stande sein sollten, die Tools dieses Frameworks zu nutzen.
 
 #+begin_src mermaid :file resources/plots/pruning-framework.png :theme forest :background transparent
 graph LR
@@ -403,49 +428,50 @@ graph LR
 #+RESULTS:
 [[file:resources/plots/pruning-framework.png]]
 
-Zudem sollte das Framework kompatibel mit aktueller Deep Learning Software und deren Formate kompatibel sein.
+Zudem sollte das Framework kompatibel mit aktueller Deep-Learning Software sein.
 Kompatibilität mit \ac{TF} [fn:tensorflow]/Keras[fn:keras] steht bei diesem Projekt im Vordergrund, da auch intern \ac{TF} für Trainings-Operationen genutzt wird.
-Optional sollte auch die Möglichkeit bestehen ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
+Optional sollte auch die Möglichkeit bestehen, ein Modell in dem ONNX[fn:onnx] Format zu exportieren, um auch Kompatibilität mit anderen Frameworks sicherzustellen.
 
 *** Erkenntnisse über Pruning Methoden
-Zudem sollte diese Arbeit durch die Forschung an diversen Pruning Methoden auch neue allgemeine Erkenntnisse hervorbringen.
-Alle Resultate dieser Arbeit sollten klar nachvollziehbar und durch das Lesen dieser Arbeit erkenntlich sein.
-Um Lesern die Resultate dieser Arbeit möglichst nachvollziehbar zu gestalten, werden alle nötigen Dateien dieser Arbeit in Form eines
+Ein weiterer wichtiger Aspekt, ist die Forschung an diversen Pruning Methoden und die daraus entstehenden Erkenntnisse formell festzuhalten.
+Alle Resultate sollten klar nachvollziehbar und durch das Lesen erkenntlich sein.
+Um Lesern die Resultate dieser Arbeit möglichst nachvollziehbar zu gestalten, werden alle nötigen Dateien in Form eines
 GitHub Repositories[fn:github] veröffentlicht.
 Der Quellcode um alle Grafiken/Diagramme und Resultate dieser Arbeit zu erzeugen ist dort zu finden.
 
 * Methodik
 ** Erstellung des Frameworks
-Wie bereits in Kapitel ref:ziel_framework eingegangen wurde, sollte bei der Erstellung des Frameworks ein
+Wie bereits in Kapitel ref:ziel_framework erwähnt wurde, sollte bei der Erstellung des Frameworks ein
 großer Fokus auf die zukünftige Erweiterbarkeit liegen.
-Aus diesem Grund wird im Besonderen auf die Architektur, Tests und der Dokumentation sehr viel Wert gelegt.
-Zudem ist das gesamte Projekt als öffentliches GitHub Repository angelegt.
-Dementsprechend handelt es sich bei dem Framework auch um ein Open Source Projekt.
-Dies soll eventuell in Zukunft zu einer Weiterentwicklung des Projektes führen.
+Aus diesem Grund wird besonders auf die Architektur, die Tests und die Dokumentation sehr viel Wert gelegt;
+außerdem ist das gesamte Projekt als öffentliches GitHub Repository angelegt.
+Demzufolge handelt es sich bei dem Framework auch um ein Open Source Projekt.
+Damit kann, falls gewünscht, in der Zukunft eine Weiterentwicklung des Projekts ermöglicht werden.
 
 *** Wahl der Sprache & Frameworks
-Python 3 lag als primäre Programmiersprache nahe, da diese sehr weit in der KI/ML Gemeinschaft verbreitet ist.
+Als primäre Programmiersprache bot sich Python an, da diese sehr weit in der KI/ML Gemeinschaft verbreitet ist.
 So basieren die meisten Frameworks für neuronale Netze wie Theano, Tensorflow oder Torch auf Python oder einer Implementation in C/C++
 die mit der Hilfe von der CPython Bridge angesprochen werden kann.
-Somit ist eine sehr gute Leistung trotz einfacher API's erreichbar.
-Zudem können in der weiteren Entwicklung dieses Projekt, gewisse Module auf eine performantere Sprache wie C/C++ ausgelagert werden.
-Jedoch sind die meisten rechenaufwendigen Opertionen wie Matrix-Operationen bereits in Frameworks wie ~numpy~[fn:numpy] bereits implementiert.
+Damit ist eine sehr gute Leistung trotz einfacher API's erreichbar.
+Zudem können in der weiteren Entwicklung dieses Projekt gewisse Module auf eine performantere Sprache wie C/C++ ausgelagert werden.
+Jedoch sind die meisten rechenaufwendigen Opertionen wie Matrix-Operationen bereits in Frameworks wie ~numpy~[fn:numpy] implementiert.
 
-Eine noch effizienter Methode, die sich besonders bei neuronalen Netzen als eine enorme Leistungssteigerung erwiesen hat,
-ist die Nutzung von \acp{GPU} oder \acp{TPUS} um einen hohen Grad von Parallelisierung erreichen zu können.
+Eine noch effizientere Methode, die sich besonders bei neuronalen Netzen als eine enorme Leistungssteigerung erwiesen hat,
+ist die Nutzung von \acp{GPU} oder \acp{TPU} um einen hohen Grad von Parallelisierung erreichen zu können.
 Das Framework ~TensorFlow~[fn:tensorflow] stellt Implementationen von auf \ac{GPU} durchführbaren mathematischen Operationen
 in Form eines Python Interfaces bereit.
-Besonders Matrix Operationen lassen sich meist bestens parallelisieren und Deep Learning besteht zum Großteil aus genau diesen.
+Besonders Matrix Operationen lassen sich meist gut parallelisieren, beziehungsweise durch spezialisierte Hardware besonders effizient berechnen.
+Dies resultiert in einer sehr effiziente Optimierung des \ac{ANN} Modells.
 
 *** Architektur
-Die Architektur sollte für den Nutzer so nachvollziehbar wie möglich gestaltet werden.
-So sollte es einfach sein Änderungen in Form von collaborative Programming im weiteren Verlauf dieses Projekts vorzunehmen.
+Der Anspruch der Architektur besteht darin, sie für den Nutzer so nachvollziehbar wie möglich zu gestalten.
+Es soll einfach sein, Änderungen in Form von kollaborativen Programmieren im weiteren Verlauf des Projekts vorzunehmen.
 
 *** Dokumentation
 
 **** Allgemeine Dokumentation des Projekts
 
-Durch GitHub Pages[fn:pages] und dem Tool Docsify[fn:docsify] ist es sehr einfach möglich eine ausgesprochen zugängliche Dokumentation
+Durch GitHub Pages[fn:pages] und dem Tool Docsify[fn:docsify] ist es sehr einfach möglich, eine ausgesprochen zugängliche Dokumentation
 bzw. Landing Page für das Projekt zu generieren.
 Der Inhalt dieser Dokumentation ist manuell erstellt und soll dem Benutzer nur einen groben Überblick über die wichtigsten Aspekte des Frameworks geben.
 Detailliertere Informationen zu internen Schnittstellen können jedoch trotzdem sehr einfach über die Modul Dokumentation aus Unterpunkt ref:pdoc eingesehen werden.
@@ -454,27 +480,28 @@ Detailliertere Informationen zu internen Schnittstellen können jedoch trotzdem 
 
 Durch das Tool pdoc3[fn:pdoc] kann aus dem Source Code eines Python Modules und dessen Docstrings[fn:docstring] eine Dokumentation in Form einer
 HTML Seite generiert werden.
-Diese ist in die Allgemeine Dokumentation des Projekts direkt eingebettet und erfordert keine separate Website.
+Diese ist direkt in die allgemeine Dokumentation des Projekts eingebettet und erfordert keine separate Website.
 Da bei der Generierung dieser Dokumentation keine weitere manuelle Arbeit geleistet werden muss, kann diese ohne weitere Umstände automatisiert
 über GitHub Actions[fn:actions] realisiert werden.
-So wird beispielsweise bei einer Änderung des Modules auf dem ~master~ Branch des Projekts ein Script ausgelöst, die eine aktualisierte Dokumentation auf
-der öffentlichen Webseite zur Verfügung stellt.
-Natürlich koaliert die Qualität der generierten Dokumentation direkt mit der Qualität der im Source Code verfassten Docstrings,
-somit ist zudem sicherzustellen, dass auch hier ein gewisser Qualitätsstandart einzuhalten ist.
-Wie dies innerhalb dieses Projekts implementiert wurde wird in Kapitel ref:tests Punkt ref:docstyle_tests genauer erläutert.
+So wird beispielsweise bei einer Änderung des Modules auf dem ~master~ Branch des Projekts ein Script ausgelöst,
+das eine aktualisierte Dokumentation auf der öffentlichen Webseite zur Verfügung stellt.
+Natürlich koaliert die Qualität der generierten Dokumentation direkt mit der Qualität der im Source Code verfassten Docstrings.
+Deshalb ist sicherzustellen, dass auch hier ein gewisser Qualitätsstandard eingehalten wird.
+Wie dies innerhalb dieses Projekts implementiert wurde, wird in Kapitel ref:tests Punkt ref:docstyle_tests genauer erläutert.
 
 *** Tests <<tests>>
 
 **** Unit Tests
 
-Um sicherzustellen, dass die Qualität der Software einen gewissen Standard erfüllt, sind Unit Tests mit Sicherheit ein essentieller Bestandteil dieses Projekts.
+Um sicherzustellen, dass die Qualität der Software den nötigen Standard erfüllt, sind Unit Tests ein essentieller Bestandteil dieses Projekts.
 Dazu wurde das sehr weit verbreitete Testing Framework pytest[fn:pytest] genutzt.
 Zusätzlich werden Daten über die Test-Coverage der Tests Dank des pytest-cov plugins für pytest generiert.
 
 **** Linting
 
-Um eine ästhetisch ansprechende Formatierung des Quellcodes im Laufe des Projekts beizubehalten.
-Durch das Tool pylint wird auch dies automatisiert möglich mit der Hilfe von GitHub Actions möglich.
+Um im Laufe des Projekts eine ästhetisch ansprechende Formatierung beizubehalten, wurde ~pylint~ verwendet.
+Durch dieses Tool wird die Formatierung des Quellcodes geprüft und durch GitHub Actions automatisiert ausgeführt.
+
 Einige der wichtigsten von der Software überprüften Punkte sind:
 - unnötige ~import~ Statements
 - korrekte Variablennamen
@@ -483,18 +510,18 @@ Einige der wichtigsten von der Software überprüften Punkte sind:
 
 **** Docstyle Tests <<docstyle_tests>>
 
-Um auch wichtige Teile wie die Dokumentation von Funktionen nicht im Laufe des Projekts zu vernachlässigen, wurde das Tool pydocstyle[fn:pydocstyle] genutzt um auch
-Docstrings auf Korrektheit zu überprüfen.
-Als Style der Docstrings wurde sich auf den von Google genutzten Styleguide[fn:styleguide] berufen.
+Um auch wichtige Teile, wie die Dokumentation von Funktionen, im Laufe des Projekts nicht zu vernachlässigen,
+wurde das Tool ~pydocstyle~[fn:pydocstyle] verwendet, um auch Docstrings auf Korrektheit zu überprüfen.
+Als Style der Docstrings wurde das von Google gebrauchte Styleguide[fn:styleguide] genutzt.
 Durch diese Methodik, müssen alle Module, Klassen und Funktionen über Docstrings verfügen, da sie sonst nicht auf einen der nicht-feature branches des Repositories gepullt werden können.
 Dadurch lässt sich eine enorm detaillierte Dokumention aller öffentlichen Schnittstellen automatisiert generieren.
 
 ** Datensätze <<datensatz>>
-Die meisten Datensätze, die in dieser Arbeit verwendet wurden, wurden durch das Python 3 Modul ~tensorflow_datasets~ cite:TFDS bezogen.
-In Tabelle ref:tab:dataset sind alle in dieser Arbeit verwendeten Datensätze gelistet.
+Die meisten, in dieser Arbeit verwendeten Datensätze, wurden durch das Python 3 Modul ~tensorflow_datasets~ cite:TFDS bezogen.
+In Tabelle ref:tab:dataset sind alle verwendeten Datensätze gelistet.
 
 #+LABEL: tab:dataset
-#+CAPTION[In dieser Arbeit verwendeten Datensätze]: Eine Liste von, in dieser Arbeit vewendeten Datensätzen.
+#+CAPTION[In dieser Arbeit verwendete Datensätze]: Eine Liste von, in dieser Arbeit vewendeten Datensätzen.
 | Datensatz                                            | Beschreibung | Quelle                                       |
 |------------------------------------------------------+--------------+----------------------------------------------|
 | Iris Dataset cite:fisher36lda                        |              | https://archive.ics.uci.edu/ml/datasets/iris |
@@ -505,11 +532,11 @@ In Tabelle ref:tab:dataset sind alle in dieser Arbeit verwendeten Datensätze ge
 * Implementierung
 
 ** Sparsity Mask <<sparsity_mask>>
-Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen Binären Tensor der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
-In anderen Worten maskiert der Sparsity Tensor die Parameter Tensoren eines Modells.
-Die Sparsity Mask ist ein essentieller Bestandteil für fast jede Pruning Methode und bei der Implementierung dreht es sich primär darum,
-diese Maske effizient anzuwenden und zu generieren.
-Deswegen ist die Klärung dieses Begriffs auch sehr wichtig für kommende Kapitel dieser Arbeit.
+Der Begriff Sparsity Mask/Tensor bezieht sich in dieser Arbeit auf einen binären Tensor, der definiert, welche Felder aus einem Weights Tenor eine $0$ enthalten.
+Mit anderen Worten ausgedrückt, maskiert der Sparsity Tensor die Parameter Tensoren eines Modells.
+Die Sparsity Mask ist ein essentieller Bestandteil für fast jede Pruning Methode und bei der Implementierung dreht es sich in erster Linie darum,
+diese Maske effizient zu generieren und anzuwenden.
+Deshalb ist die Klärung dieses Begriffs auch sehr wichtig für die folgenden Kapitel dieser Arbeit.
 Auswirkungen der Sparsity Mask auf ein Array wird in Abbildung ref:fig:simplesparsity dargestellt.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
@@ -542,23 +569,23 @@ return 'resources/plots/masking.png'
 [[file:resources/plots/masking.png]]
 
 Bei der Implementierung der Pruning Operation bieten sich primär zwei Zeitpunkte während des Trainings an,
-an denen dies Sparsity Maske angewandt werden kann.
-1. Nach jedem Schritt des Optimizers, werden die maskierten Felder wieder auf $0$ zurückgesetzt.
+wobei die Sparsity Maske auf die Modell-Parameter angewendet werden kann.
+1. Nach jedem Schritt des Optimizers werden die maskierten Felder wieder auf $0$ zurückgesetzt.
 2. Die Parameter werden zur Initialisierung einmal maskiert.
-   Daraufhin werden ausschließlich die Gradienten maskiert um somit die Parameter Sparsity beizubehalten.
+   Daraufhin werden ausschließlich die Gradienten maskiert, um somit die Parameter Sparsity beizubehalten.
 
-~condense~ verwendet beide dieser Ansätze um die gewünschte Sparsity eines Modells zu erzielen.
+~condense~ verwendet beide dieser Ansätze, um die gewünschte Sparsity eines Modells zu erzielen.
 
 ** ~condense~ Modul
-Wie in Kapitel ref:ziel erwähnt ist auch die Erstellung eines Python Frameworks ein großer Teil dieser Arbeit.
+Wie in Kapitel ref:ziel erwähnt, ist auch die Erstellung eines Python Frameworks ein großer Teil dieser Arbeit.
 Das englische Wort /condense/ (zu Deutsch /kondensieren/ oder auch /verdichten/) beschreibt die Operation des Prunings von neuronalen Netzen sehr gut,
 da Teile des Netzes gelöscht, bzw. verdichtet werden.
 
 *** Struktur
-Eine klare und einfach verständliche Strukturierung der Schnittstellen ist (wie in Kapitel ref:ziel_framework beschrieben) ein wichtiges
-Ziel dieser Arbeit.
+Eine klare und einfach verständliche Strukturierung der Schnittstellen ist (wie in Kapitel ref:ziel_framework beschrieben)
+ein wichtiges Ziel dieser Arbeit.
 Die grobe Struktur des ~condense~ Moduls wird in Abbildung ref:fig:condense_structure dargestellt.
-In folgenden Kapiteln werden die einzelnen Untermodule dieses Projekts genauer erläutert.
+In den folgenden Kapiteln werden die einzelnen Untermodule dieses Projekts genauer erläutert.
 
 #+BEGIN_SRC mermaid :file resources/plots/condense-module.png :theme forest :background transparent :cache yes
 graph TD
@@ -576,15 +603,15 @@ graph TD
 
 #+LABEL: fig:condense_structure
 #+CAPTION[Condense Modul Architektur]: Diagram des Python Moduls ~condense~ und dessen Untermodule.
-#+CAPTION: Funktionen/Methoden sind hierbei mit abgerundeten Kanten visualisiert und Module/Klassen mit scharfen Kanten.
-#+RESULTS[599357935a3a84530721237a8f915f8496c0ccec]:
+#+CAPTION: Funktionen/Methoden sind hierbei mit abgerundeten Kanten dargestellt und Module/Klassen mit scharfen Kanten.
+#+RESULTS[3335312817c5cdb4cb1fc617cff527a171587a7a]:
 [[file:resources/plots/condense-module.png]]
 
 **** Keras Kompatibilitäts-Modul (~condense.keras~)
 
-Um eine direkte Integration in das Keras Machine Learning Framework bieten zu können, existiert im Umfang dieses Moduls ein Keras/\ac{TF} kompatibles Sub-Module.
-Dieses Nutzt im Vergleich zum im Punkt ref:optimization_module beschriebenen Optimierungs-Modul keine ~numpy~[fn:numpy] Arrays sondern \ac{TF} Tensoren.
-Die Implementation von Pruning Methoden als TensorFlow Tensoren bietet die Möglichkeit diese auf \acp{GPU} ausführen zu können,
+Um eine direkte Integration in das Keras Machine Learning Framework bieten zu können, existiert im Umfang dieses Moduls ein Keras/\ac{TF} kompatibles Sub-Modul.
+Dieses nutzt, im Vergleich zum im Punkt ref:optimization_module beschriebenen Optimierungs-Modul, keine ~numpy~[fn:numpy] Arrays, sondern \ac{TF} Tensoren.
+Die Implementation von Pruning Methoden als TensorFlow Tensoren bietet die Möglichkeit, diese auf \acp{GPU} ausführen zu können,
 was einen enormen Leistungszuwachs mit sich bringt.
 Jedoch verursacht die Arbeit mit \ac{TF} Tensoren auch deutlich mehr Aufwand bei der Implementation.
 In Kapitel ref:keras_module wird noch genauer auf die Methodik hinter diesem Modul eingegangen.
@@ -598,39 +625,38 @@ In Kapitel ref:pytorch wird noch näher auf die PyTorch spezifische Implementati
 **** Optimierungs-Modul (~condense.optimizer~) <<optimization_module>>
 
 Dieses Modul stellt Pruning Implementationen für ~numpy~[fn:numpy] Arrays bereit.
-Bei dir Implementierung wurde besonders auf die Utilisation von ~numpy~ Methoden Wert gelegt um best mögliche Leistung zu erreichen.
-Teilweise werden auch Sequenzielle ~keras~ Modelle von der API unterstützt,
-wobei für nähere Informationen auf die Dokumentation verwiesen werden sollte: https://sirbubbls.github.io/condense/#/pdoc/condense/optimizer/index.html.
+Bei der Implementierung wurde besonders auf die Utilisation von ~numpy~ Methoden Wert gelegt, um bestmögliche Leistung zu erreichen.
+Teilweise werden auch sequenzielle ~keras~ Modelle von der API unterstützt,
+wobei für ausführlichere Informationen auf die Dokumentation verwiesen werden sollte: https://sirbubbls.github.io/condense/#/pdoc/condense/optimizer/index.html.
 
 **** Utils (~condense.utils~)
 
-Dieses Submodule soll Nutzern eine Hand voll nützlicher Tools bereitstellen, beispielsweise die Berechnung der Sparsity eines Layers.
+Dieses Submodul soll Nutzern eine handvoll nützlicher Tools bereitstellen; beispielsweise die Berechnung der Sparsity eines Layers.
 
 **** Modul zur Kompression von optimierten Modellen (~condense.compressor~)
 
-Um Modelle in einer effizienten Form zu speichern und in den Arbeitsspeicher laden zu können muss dieses auch komprimiert werden.
+Um Modelle in einer effizienten Form zu speichern und in den Arbeitsspeicher laden zu können, müssen diese auch komprimiert werden.
 In Zukunft soll dies in Form dieses Sub-Modules realisiert werden, jedoch ist dies nicht Ziel dieser Arbeit.
 *** Installation
 Natürlich ist es enorm wichtig, wie potentielle Nutzer das ~condense~ Modul installieren können.
-Da das Projekt unter einem öffentlichen GitHub Repository[fn:gh_condense] entwickelt wird, können Nutzer durch einfaches herunterladen des
-Repositories sich Zugang zu Implementationen gewähren.
-Durch das Python Modul ~pip~[fn:pip], ein Module Management System für Python, ist es einfach möglich Module aus dem öffentlichen PyPi[fn:pypi]
-Repository herunterladen und zu installieren.
+Da das Projekt unter einem öffentlichen GitHub Repository[fn:gh_condense] entwickelt wird, können sich Nutzer durch einfaches Herunterladen des
+Repositories, Zugang zu Implementationen verschaffen.
+Durch das Python Modul ~pip~[fn:pip], ein Module Management System für Python, ist es einfach möglich, Module aus dem öffentlichen PyPi[fn:pypi]
+Repository herunterzuladen und zu installieren.
 Module und deren Versionen müssen jeweils bei einer neuen Version neu eingereicht werden.
-Dies ist durch GitHub Actions Framework automatisierbar indem durch Änderungen des Master Branches eine Veröffentlichung
-ausgelöst wird, vorausgesetzt es werden alle Tests des Moduls erfolgreich ausgeführt.
+Dies ist durch GitHub Actions Framework automatisierbar, indem durch Änderungen des Master Branches eine Veröffentlichung
+ausgelöst wird, vorausgesetzt, es werden alle Tests des Moduls erfolgreich ausgeführt.
 
 #+begin_quote
 Eine Installation durch ~pip~ ist durch das Kommando: ~pip install condense~ möglich.
 #+end_quote
 
 ** One-Shot Pruning <<one-shot>>
-Die wohl trivialste Methode Parameter eines \ac{ANN} Modells prunen, ist ein sogenanntes One-Shot Pruning Verfahren zu anzuwenden.
-Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt, also auch keine Datensätze benötigt.
-Nachteile sind jedoch eine deutlich verlustbehafteten Optimierung im Kontrast zu iterativen Pruning (Kapitel ref:iterative).
-Die Implementierung von One-Shot Pruning gestaltet sich im Vergleich mit iterativen Pruning als trivial.
+Die wohl trivialste Methode, um Parameter eines \ac{ANN} Modells zu prunen, ist ein sogenanntes One-Shot Pruning Verfahren anzuwenden.
+Bei diesem Typ von Pruning werden keine Refitting (Kapitel ref:refitting) Operationen angewandt; also auch keine Datensätze benötigt.
+Nachteil ist jedoch eine deutlich verlustbehaftete Optimierung im Gegensatz zu iterativen Pruning (Kapitel ref:iterative).
 Es wird eine Maskierungs-Funktion benötigt, um die zu prunenden Felder der Matrix zu ermitteln.
-Eine einfache Maskierungs-Funktion wäre beispielsweise die Auswahl aller Felder, die unter eine festgelegten Threshold $t$ liegen.
+Eine einfache Maskierungs-Funktion wäre beispielsweise die Auswahl aller Felder, die unter einer festgelegten Threshold $t$ liegen.
 Die durch diese Funktion resultierende Matrix $S$ wird auch Sparsity-Mask (siehe Kapitel ref:sparsity_mask) genannt.
 $$
 W = \begin{pmatrix} 0.4 && 2 \\ 1.4 && 0\end{pmatrix} \text{ mit } t = 1.0 \Rightarrow S = \begin{pmatrix} 0 && 1 \\ 1 && 0 \end{pmatrix}
@@ -672,11 +698,11 @@ return 'resources/plots/one-shot-random.png'
 #+LABEL: fig:oneshot
 #+CAPTION[Visualisierung von One Shot Pruning]: Visualisierung von One Shot Pruning mit verschiedenen Thresholds $t$.
 #+CAPTION: Die das Pruning durchführende Operation ~w[w < t] = 0~ setzt alle sich in der Maske ~w < t~ befindenden Felder der Matrix auf $0$.
-#+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-)Funktion ersetzt werden.
+#+CAPTION: Die Maske ~w < t~ kann durch eine beliebige (Maskierungs-) Funktion ersetzt werden.
 #+RESULTS[e31988325076586e7bff351029260fa878d4cd85]:
 [[file:resources/plots/one-shot-random.png]]
 
-Das Modul ~condense~ bietet dabei mehrere verschiedene Implementationen und Schnittstellen für Nutzer um Datenstrukturen zu prunen.
+Das Modul ~condense~ bietet dabei mehrere verschiedene Implementationen und Schnittstellen für Nutzer, um Datenstrukturen zu prunen.
 Die universellste Methode One-Shot Pruning auf Tensoren durchzuführen, ist die ~condense.optimizer.layer_operations~ API zu nutzen.
 Diese erlaubt Pruning auf ~numpy.ndarrays~ durchzuführen.
 
@@ -690,10 +716,11 @@ Das in Kapitel ref:one-shot angesprochene One-Shot Pruning-Verfahren, verursacht
 Jedoch lässt sich  One-Shot Pruning einfach in ein iteratives Pruning-Verfahren umwandeln.
 
 *** Refitting <<refitting>>
-Nach dem Pruning eines Modells kann dieses erneut trainiert werden, somit kann sich das Modell an die manipulierten Parameter adjustieren.
-Es ist jedoch zwingend notwendig die Sparsity Mask (Kapitel ref:sparsity_mask) der jeweiligen Layer zu speichern,
+Nach dem Pruning eines Modells kann dieses erneut trainiert werden.
+Somit kann sich das Modell an die manipulierten Parameter adjustieren.
+Es ist jedoch zwingend notwendig, die Sparsity Mask (Kapitel ref:sparsity_mask) der jeweiligen Layer zu speichern,
 da diese auf die Parameter nach dem Training angewandt werden muss cite:Frankle2018.
-Was passiert wenn dies nicht gemacht wird, zeigt Abbildung ref:fig:refitting.
+Was passiert, wenn dies nicht gemacht wird, zeigt Abbildung ref:fig:refitting.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import matplotlib.pyplot as plt
@@ -746,17 +773,17 @@ return 'resources/plots/iterative-1.png'
 #+END_SRC
 
 #+LABEL: fig:refitting
-#+CAPTION[Weights eines Layers nach refitting]: In dieser Grafik wird der Layer eines Modells,
+#+CAPTION[Weights eines Layers nach refitting]: In dieser Grafik wird der Layer eines Modells
 #+CAPTION: durch naives Weight und Neuron Pruning optimiert und anschließend durch Refitting erneut trainiert.
 #+CAPTION: Durch das Refitting ohne Sparsity Maske wird die Sparsity des Modells von ca. $77\%$ auf fast $0\%$ geändert.
-#+CAPTION: Änderungen die durch das Refitting verursacht werden, sind in der rechts-unteren Abbildung visualisiert.
+#+CAPTION: Änderungen die durch das Refitting verursacht werden, sind in der Abbildung rechts unten dargestellt.
 #+RESULTS[585ffcab6c0d18d41ee6c9266eae6f62449f73e8]:
 [[file:resources/plots/iterative-1.png]]
 
 ** Implementierung der Lottery Ticket Hypothesis <<lottery_ticket>>
 Der durch Jonathan Frankle und Michael Carbin publizierte Artikel
 "The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks"cite:Frankle2018,
-beschreibt eine Methode ein bereits gepruntes Modell zu trainieren um ein schnelleres Training zu ermöglichen.
+beschreibt eine Methode, ein bereits gepruntes Modell zu trainieren um ein schnelleres Training zu ermöglichen.
 
 Dabei wird folgende Prozedur vorgeschlagen:
 1. Initialisieren und Speichern aller Parameter des Modells
@@ -764,27 +791,27 @@ Dabei wird folgende Prozedur vorgeschlagen:
 3. Prunen dieses Modells und Speichern der Layer Masken
 4. Reinitialisieren des Modells durch die in Schritt 1 gespeicherten Parameter
 5. Anwendung der durch das Prunen generierten Sparsity Masken
-6. Erneutes trainieren des Modells unter Berücksichtigung der Sparsity Maske
+6. Erneutes Trainieren des Modells unter Berücksichtigung der Sparsity Maske
 
-Durch dieses Verfahren ist es möglich nicht nur kleinere Modelle schneller und effizienter zu trainieren, sondern auch eine allgemein bessere
+Durch dieses Verfahren ist es möglich, nicht nur kleinere Modelle schneller und effizienter zu trainieren, sondern auch eine allgemein bessere
 Test-Accuracy des Netzes zu erreichen.
 Besonders gefördert wird dadurch das Generalisierungspotential des Netzes.
 
 *** Beispiele MNIST <<bsp_mnist>>
 In diesem Beispiel werden verschiedene \acp{ANN} auf den ~MNIST~ cite:lecun-gradientbased-learning-applied-1998,TFDS
 Datensatz (siehe Kapitel ref:datensatz) trainiert.
-Ein Beispiel wie diese Pruning Vorgehensweise durch ~condense~ Methoden realisiert werden kann ist in Abbildung ref:code:mnist gegeben.
-Der Nutzer kann die Klasse ~condense.keras.Trainer(model, target_sparsity)~ nutzen um automatisiert einen Trainingsprozess zu starten.
-Sobald die Klasse initialisiert wurde, muss nur noch die Methode ~.train()~ aufgerufen werden, dabei können dieselben Funktionsargumente
+Ein Beispiel wie diese Pruning Vorgehensweise durch ~condense~ Methoden realisiert werden kann, ist in Abbildung ref:code:mnist gegeben.
+Der Nutzer kann die Klasse ~condense.keras.Trainer(model, target_sparsity)~ verwenden, um automatisiert einen Trainingsprozess zu starten.
+Sobald die Klasse initialisiert wurde, muss nur noch die Methode ~.train()~ aufgerufen werden. Dabei können dieselben Funktionsargumente
 wie bei der ~keras~ Methode ~.fit()~ übergeben werden.
-Die unten gezeigten Graphen in Abbildung ref:fig:lottery-mnist-1 & ref:fig:lottery-mnist-2 zeigen Training/Testing Loss während des
+Die unten dargestellten Graphen in Abbildung ref:fig:lottery-mnist-1 zeigen Training/Testing Loss während des
 automatisierten Trainings.
 Beide geprunten Modelle wurden dabei mit einer Ziel-Sparsity von $80\%$ trainiert.
-Aus den Graphen geht hervor, wie der Testing-Loss des optimierten Modells trotz der hohen Pruning Rate nicht schlechter ausfällt,
-als bei dem selben noch vollständigen Modell.
+Aus den Graphen geht hervor, dass der Testing-Loss des optimierten Modells trotz der hohen Pruning Rate nicht schlechter ausfällt,
+als bei demselben noch vollständigen Modell.
 
 #+CAPTION[Lottery Ticket Pruning durch Condense]: Dank der einfachen Nutzerschnittstelle von ~condense~  label:code:mnist
-#+CAPTION: ist es sehr einfach Möglich automatisiert Pruning auf dem Ziel-Modell auszuführen.
+#+CAPTION: ist es sehr einfach möglich automatisiert Pruning auf dem Ziel-Modell auszuführen.
 #+BEGIN_SRC
 import condense
 import tensorflow_datasets as tfds
@@ -864,65 +891,6 @@ return 'resources/plots/lottery-1.png'
 #+RESULTS[333f96f9eb909265676ad73c871fd79f451bba41]:
 [[file:resources/plots/lottery-1.png]]
 
-
-#+BEGIN_SRC python :exports results :results file :cache yes
-import sys
-sys.path.append('condense')
-import condense
-import matplotlib.pyplot as plt
-import numpy as np
-import keras
-from keras.layers import Dense, Conv2D
-from copy import deepcopy
-import tensorflow_datasets as tfds
-
-EPOCHS = 50
-SPARSITY = 0.8
-ds_train, ds_test = tfds.load('mnist', split=['train', 'test'], shuffle_files=True, as_supervised=True)
-
-model = keras.models.Sequential(layers=[
-    Conv2D(24, input_shape=(28,28,1,), kernel_size=5, activation='relu', padding='same'),
-    keras.layers.MaxPool2D(),
-    Conv2D(48, kernel_size=5, activation='relu', padding='same'),
-    keras.layers.MaxPool2D(),
-    keras.layers.Flatten(),
-    Dense(256, activation='relu'),
-    Dense(10, activation='softmax', name='output')
-])
-model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
-model.build()
-
-INITIAL_WEIGHTS = deepcopy(model.get_weights())
-
-classical_training = model.fit(ds_train.batch(50), epochs=EPOCHS, steps_per_epoch=20, validation_data=ds_test.batch(50), validation_steps=2)
-model.set_weights(INITIAL_WEIGHTS)
-model.compile(keras.optimizers.Adam(learning_rate=0.001), keras.losses.SparseCategoricalCrossentropy(from_logits=True))
-
-trainer = condense.keras.Trainer(model, 0.75)
-hist = trainer.train(ds_train.batch(50).cache(), EPOCHS, steps_per_epoch=20, eval_data=ds_test.batch(50).cache())
-plt.figure(figsize=(10, 5))
-plt.title(f'MNIST model pruned by {SPARSITY*100}%')
-plt.plot(hist.history['val_loss'], label='Training on Sparse Model (Validation Loss)', lw=4)
-plt.plot(hist.history['loss'], label='Training on Sparse Model (Training Loss)', ls='--')
-plt.plot(classical_training.history['loss'], label='Training on Full Model (Training Loss)', ls='--')
-plt.plot(classical_training.history['val_loss'], label='Training on Full Model (Validation Loss)')
-plt.plot(trainer.history['ticket_search'].history['loss'], label='Search for winning ticket', ls=':')
-plt.grid()
-plt.legend()
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.axis([0, EPOCHS, 0, 3])
-plt.tight_layout()
-plt.savefig('resources/plots/lottery-2.png')
-return 'resources/plots/lottery-2.png'
-#+END_SRC
-
-#+LABEL: fig:lottery-mnist-2
-#+CAPTION[Lottery Ticket Pruning auf einem Modell mit convolutional Schichten]: Pruning auf einem Modell das auf dem MNIST Datensatz
-#+CAPTION: mit der Hilfe von convolutional Schichten trainiert wurde.
-#+RESULTS[8ccf04d8d219d20fe157a85a06af4dbc79be47f4]:
-[[file:resources/plots/lottery-2.png]]
-
 *** Vorbehalte
 Der Vergleich geprunter und ungeprunter Modelle gestaltet sich jedoch nicht so trivial wie in Kapitel ref:bsp_mnist dargestellt.
 Die Reduktion eines Großteils der Parameter wirkt sich extrem auf die Effekte von Hyperparametern[fn:hyperparameter] aus.
@@ -931,27 +899,27 @@ Um einen möglichst gerechten Vergleich zustande zu bringen, muss durch Hyperpar
 von beiden zu vergleichenden Modellen jeweils die beste mögliche Wahl von Hyperparametern getroffen werden.
 
 ** Keras Kompatibilitäts-Modul <<keras_module>>
-Um eine einfache und klare Schnittstelle zu Keras Modellen zu bieten, gibt ~condense~ Nutzern die Möglichkeit
+Um eine einfache und klare Schnittstelle zu Keras Modellen zu bieten, gibt ~condense~ Nutzern die Möglichkeit,
 einzelne Keras Layer an einen Wrapper (~condense.keras.PruningWrapper~) zu übergeben.
 Dieser implementiert Schnittstellen für andere Komponenten des Frameworks.
-Diese werden genutzt um verschiedenste Layer-Manipulationen vornehmen zu können.
+Diese werden genutzt, um verschiedenste Layer-Manipulationen vornehmen zu können.
 
 #+BEGIN_QUOTE
-Die Hilfsfunktion ~condense.keras.wrap_layer(model, sparsity_function)~ instantiiert ein Modell und augmentiert alle möglichen Layer durch ~PruningWrapper~.
-Für die meisten Use-Cases ist dies der empfohlene Weg Keras Modelle zu augmentieren/optimieren.
+Die Hilfsfunktion ~condense.keras.wrap_layer(model, sparsity_function)~ instanziiert ein Modell und augmentiert alle möglichen Layer durch ~PruningWrapper~.
+Für die meisten Use-Cases ist dies der empfohlene Weg, Keras Modelle zu augmentieren/optimieren.
 #+END_QUOTE
 
 Dem ~PruningWrapper~ muss zusätzlich eine Sparsity Funktion übergeben werden.
-Diese definiert wie sich das gewünschte Sparsity Ziel im Laufe des Trainings verhalten wird.
-~condense~ stellt einige dieser Funktionen zur Verfügung, bietet aber die Möglichkeit durch die Implementierung
+Diese definiert, wie sich das gewünschte Sparsity Ziel im Laufe des Trainings verhalten wird.
+~condense~ stellt einige dieser Funktionen zur Verfügung, bietet aber die Möglichkeit, durch die Implementierung
 der abstrakten Klasse ~SparsityFunction~ ein anderes Verhalten zu bestimmen.
 Beispiele für bereits existierende Funktionen sind:
 - ~Constant(t_sparsity)~: Ziel Sparsity bleibt über den kompletten Trainingsprozess konstant
-- ~Linear(t_sparsity)~: Ziel Sparsity nimmt mit laufenden Training bis zu dem letztendlichen Wert ~t_sparsity~ zu
+- ~Linear(t_sparsity)~: Ziel Sparsity nimmt mit laufendem Training bis zu dem letztendlichen Wert ~t_sparsity~ zu
 
-In dem unten gezeigten Code Beispiel wird ein sequentielles Keras Modell mit $4$ Schichten erzeugt.
+In dem unten gezeigten Code-Beispiel wird ein sequentielles Keras Modell mit vier Schichten erzeugt.
 Dabei werden Input (Schicht $0$) und Output (Schicht $4$) nicht durch Pruning optimiert.
-Dabei werden die Hidden Layer[fn:hidden] (Schicht $2$ und Schicht $3$) jeweils mit zwei verschiedenen Sparsity Funktionen
+Die Hidden Layer[fn:hidden](Schicht $2$ und Schicht $3$) werden außerdem  jeweils mit zwei verschiedenen Sparsity Funktionen
 optimiert. Schicht $2$ wird mit einer konstanten Ziel Sparsity von ~0.5~ optimiert und Schicht $3$ mit einer über das Training
 ansteigenden Ziel Sparsity bis zu ~0.7~.
 Bei dem Training (~model.fit(..., callbacks=[PruningCallback()])~) wird durch den ~PruningWrapper~ automatisch eine entsprechende Pruning Operation durchgeführt.
@@ -967,7 +935,7 @@ model = keras.models.Sequential(layers=[
 
 Leider ist es durch die Architektur von Keras/TensorFlow notwendig bei dem Trainings-Funktionsaufruf ~.fit()~ auch den
 Callback ~condense.keras.PruningCallback~ zu übergeben.
-Dieser ist intern für die den ~.prune()~ Funktionsaufruf der jeweiligen ~PruningWrapper~ Instanzen verantwortlich.
+Dieser ist intern dafür verantwortlich, dass die ~.prune()~-Funktion der jeweiligen ~PruningWrapper~ Instanzen aufgerufen wird.
 
 #+CAPTION[Quellcode Beispiel: Pruning durch Keras Wrapper]:
 #+CAPTION: Einfaches Pruning eines Modells ~model~ durch Pruning des ~condense.keras~ Moduls.
@@ -990,11 +958,11 @@ augmented.fit(generator,
 #+END_SRC
 
 ** PyTorch Kompatibilitäts-Modul <<pytorch>>
-PyTorch hat in den letzten Jahren deutlich an Popularität gewonnen, dies liegt neben mehreren Gründen vor allem
+PyTorch hat in den letzten Jahren deutlich an Popularität gewonnen. Dies liegt neben mehreren anderen Gründen vor allem
 an der einfachen Handhabe im Zusammenhang mit Python.
 Aufgrund der Architektur lassen sich Pruning Masken in PyTorch signifikant eleganter und einfacher implementieren,
-als in TensorFlow/Keras.
-Im Vergleich zu ~Keras~ gestaltete sich die Implementierung von Pruning Masken für die Parameter eines Modells deutlich einfacher
+als mit TensorFlow/Keras.
+Vor allem im Vergleich zu ~Keras~ gestaltete sich die Implementierung von Pruning Masken für die Parameter eines Modells deutlich einfacher
 und genereller.
 So lassen sich in PyTorch beliebige Modelle durch ~condense~ pruning Implementationen optimieren.
 Selbst die Implementation des Training-Loops ist nicht durch ~condense~ vorgeschrieben.
@@ -1014,13 +982,13 @@ Der ~PruningAgent~ führt bei der Initialisierung folgende Operationen durch:
 1. Er legt eine ~HashMap~ an, die Parameter des Modells auf einen Tensor gleicher Größe abbildet.
    #+begin_quote
    Um gewisse Parameter oder Module eines Modells vom Pruning auszuschließen, kann das Konstruktor-Argument ~ignored_params~ verwendet werden.
-   Es handelt sich dabei um kein benötigtes Argument, jedoch empfiehlt es sich Output Layer eines Netzes nicht zu prunen.
+   Es handelt sich dabei um kein benötigtes Argument, jedoch empfiehlt es sich, Output Layer eines Netzes nicht zu prunen.
    #+end_quote
 2. Jeder Parameter erhält einen Callback der automatisch ausgeführt wird, sobald der jeweilige Gradient berechnet wurde.
-   Dieser multipliziert die Maske auf den Gradienten, also eliminiert maskierte Felder.
-   Somit wird sichergestellt, dass maskierte Felder durch den Optimizer nicht manipuliert werden können.
+   Dieser multipliziert die Maske auf den Gradienten; also eliminiert maskierte Felder.
+   Auf diese Weise wird sichergestellt, dass maskierte Felder durch den Optimizer nicht manipuliert werden können.
 
-** Pruning während des Trainings-Przoesses
+** Pruning während des Trainings-Prozesses
 #+BEGIN_SRC python :exports results :results file :cache yes
 import keras
 import matplotlib.pyplot as plt
@@ -1075,12 +1043,12 @@ return 'resources/plots/keras-2.png'
 #+RESULTS[a4f518ecb23fc697566f978a7f12547bb0bbc26f]:
 [[file:resources/plots/keras-2.png]]
 
-Eine Möglichkeit ein Modell während des Trainings-Prozesses zu prunen ist die jeweilig zu prunenden Parameter nach bestimmten Trainingsabschnitten immer wieder erneut zu prunen.
+Eine Möglichkeit ein Modell während des Trainings-Prozesses zu prunen ist, die jeweilig zu prunenden Parameter nach bestimmten Trainingsabschnitten immer wieder erneut zu prunen.
 
 Integriert wurde dies in dieser Implementation in der Form eines Wrappers für Keras Layer.
 So müssen die Layer eines bestehenden Modells nur an den Constructor der Wrapper Klasse übergeben werden und dieser berechnet einen geeigneten Sparsity-Tensor während des Trainings.
 Der Ablauf von Operationen während des Trainings kann in Abbildung ref:fig:pruning-process betrachtet werden.
-Durch die Callback API, die von Keras zur Verfügung gestellt wird werden die Pruning Operationen in definierten Intervallen während des Trainings ausgeführt.
+Durch die Callback API, die von Keras zur Verfügung gestellt wird, werden die Pruning Operationen in definierten Intervallen während des Trainings ausgeführt.
 Bei der Pruning Operation handelt es sich um die elementare Multiplikation der Sparsity Mask $M$ und des jeweiligen Parameters $p$ Tensors $p_{neu} = p_{alt} \times M$.
 
 #+begin_src mermaid :file resources/plots/training-process.png :theme forest :background transparent :cache yes
@@ -1153,21 +1121,32 @@ return 'resources/plots/keras-1.png'
 [[file:resources/plots/keras-1.png]]
 
 ** Keras/TensorFlow als Backend
-Operationen des neuronalen Netzes wie das Training oder die Evaluierung wird durch das auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
+Operationen des neuronalen Netzes, wie das Training oder die Evaluierung, werden durch das, auf neuronale Netze ausgelegte \ac{ML} Framework TensorFlow ausgeführt.
 Dies bietet Nutzern erhebliche Vorteile wie die mögliche Ausführung auf verschiedensten Plattformen wie GPU/CPU oder Hardware Beschleunigern.
-Zudem lassen sich TensorFlow "Layer" eines neuronalen Netzes einfach durch eine öffentliche API erweitern.
+Ein weiterer Vorteil ist, dass sich TensorFlow "Layer" eines neuronalen Netzes ohne großen Aufwand durch eine öffentliche API erweitern lassen.
 Somit lässt sich im weiteren Verlauf des Projekts eine direkte Integration in das TensorFlow Ökosystem anstreben.
-TensorFlow bietet zusätzlich durch das externe Modul ~model-optimization~[fn:model_opt] Optimierungen an einem Keras/TensorFlow Modell vorzunehmen.
+Mit TensorFlow bietet sich zusätzlich die Möglichkeit an, durch das externe Modul ~model-optimization~[fn:model_opt], Optimierungen an einem Keras/TensorFlow Modell vorzunehmen.
 Auch Pruning wird derzeit von dem Tool unterstützt, indem ein vorhandenes Modell durch die Augmentation von Layern um Pruning Funktionalität erweitert werden kann.
-Es besteht somit die Möglichkeit auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
-Somit können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
+Es besteht folglich die Möglichkeit, auch ein schon bestehendes Backend für Pruning Operationen zu nutzen.
+Demzufolge können Pruning Operationen zuerst auf das ~model-optimization~ Modul ausgelagert werden und es kann sich auf das Refitting und die Analyse von neuronalen Netzen konzentriert werden.
 
-* Ergebnisse
+* Ergebnisse <<results>>
+
+** Einfluss der Modell Architektur und des Datensatzes
+Die Effektivität der in dieser Arbeit behandelten Pruning Methoden hängt stark von dem zu prunenden Modell und der damit
+einhergehenden Komplexität der Trainingsdaten ab.
+Sei $C_M$ die maximale zu erfassenden Komplexität des Modells und $C_D$ die Komplexität der Trainingsdaten.
+Ist $C_M < C_D$ so wird das Modell nicht in der Lage sein, die numerischen Zusammenhänge aus dem Trainingsdatensatz zu erfassen.
+Analog gilt für $C_M > C_D$ das Gegenteil.
+Durch Pruning wird versucht, die maximal zu erfassende Komplexität des Modells so zu verringern,
+dass die Genauigkeit des Modells bezüglich der Test Daten möglichst unverändert bleibt.
+Demnach ist Pruning besonders effektiv, wenn die maximale Modell Komplexität $C_M$ sehr viel größer ist
+als die zugrunde liegenden Zusammenhänge des Datensatzes $C_D$.
 
 ** One Shot Pruning
 Das One Shot Interface des ~condense~ Moduls ist durch ~condense.one_shot()~ zu nutzen.
-So ist es sehr leicht möglich Keras Modelle durch One-Shot Pruning zu optimieren.
-Im diesem Kapitel werden verschiedenste Modelle durch diese Methode optimiert und evaluiert.
+So ist es sehr leicht möglich, Keras Modelle durch One-Shot Pruning zu optimieren.
+In diesem Kapitel werden verschiedenste Modelle durch diese Methode optimiert und evaluiert.
 Ein Beispiel für das One-Shot Interface des ~condense~ Moduls ist in Abbildung ref:src:one-shot zu sehen.
 
 #+LABEL: src:one-shot
@@ -1228,11 +1207,11 @@ In diesem Beispiel wird ein Convolutional Model durch immer stärkeres One-Shot 
 Das Modell umfasst deutlich mehr Parameter als das Dense Modell aus Kapitel ref:one_shot_iris.
 Aus der Abbildung ref:fig:mnist-results-one-shot ist zu entnehmen, dass sich die Test-Accuracy des Modells bis zu einer Parameter-Sparsity von $40\%$ kaum negativ verändert.
 Daraus lässt sich die relativ niedrige Informationsdichte des Modells schlussfolgern.
-Wie bereits angesprochen, eignen sich genau diese Modelle für Pruning Optimierungen deutlich besser, als informationsdichtere Modelle.
-In dem in Abbildung ref:src:one-shot-mnist gezeigten Quellcodeausschnitt,
-ist das One-Shot Interface des PyTorch Kompatibilitätsmodul gezeigt (Kapitel ref:pytorch).
-Anzumerken ist dabei das Konstruktor Argument ~ignored_params~,
-bei dem spezifiziert wird die letzte Schicht des Modells (also der Output Layer) nicht zu prunen.
+Wie bereits angesprochen, eignen sich genau diese Modelle für Pruning Optimierungen deutlich besser, als Modelle mit einer dichteren Informationsdichte.
+In dem in Abbildung ref:src:one-shot-mnist gezeigten Quellcodeausschnitt
+wird das One-Shot Interface des PyTorch Kompatibilitätsmodul gezeigt (Kapitel ref:pytorch).
+Hervorzuheben ist dabei das Konstruktor Argument ~ignored_params~,
+bei dem spezifiziert wird, die letzte Schicht des Modells (also der Output Layer) nicht zu prunen.
 Das Argument ~apply_mask=True~ sorgt für die sofortige Anwendung der generierten Maske und nimmt somit One-Shot Pruning vor.
 
 #+LABEL: src:one-shot-mnist
@@ -1321,12 +1300,12 @@ return 'resources/plots/conv_one_shot.png'
 [[file:resources/plots/conv_one_shot.png]]
 
 ** Training eines Sub-Networks (Lottery Ticket Hypothesis cite:Frankle2018)
-Bei vorangegangenen Pruning-Methoden, wurde bisher nur nach oder während des Trainings-Prozesses Pruning vorgenommen.
-Jedoch ist es auch möglich das Training auf einem Sub-Network, also ein gepruntes Netz des Originals vorzunehmen cite:Frankle2018.
-Für eine genaueren Beschreibung dieser Methodik wird an dieser Stellte auf Kapitel ref:lottery_ticket dieser Arbeit verwiesen.
+Bei vorangegangenen Pruning-Methoden wurde bisher nur nach oder während des Trainings-Prozesses Pruning vorgenommen.
+Es ist jedoch auch möglich, das Training auf einem Sub-Network, also einem geprunten Netz des Originals, vorzunehmen cite:Frankle2018.
+Für eine genauere Beschreibung dieser Methodik wird an dieser Stellte auf Kapitel ref:lottery_ticket dieser Arbeit verwiesen.
 
-Durch die Anwendung der "Lottery Ticket Hypothesis" cite:Frankle2018 ist es möglich den initialen Trainingsprozess deutlich zu verbessern.
-Diese Pruning Methode ist nur für Modelle möglich, die noch nicht trainiert wurden, für bereits trainierte Modelle sollte ein One-Shot Pruning Ansatz gewählt werden.
+Durch die Anwendung der "Lottery Ticket Hypothesis" cite:Frankle2018 wird erreicht, den initialen Trainingsprozess deutlich zu verbessern.
+Diese Pruning Methode ist nur für Modelle geeignet, die noch nicht trainiert wurden; für bereits trainierte Modelle sollte ein One-Shot Pruning Ansatz gewählt werden.
 So zeigt Abbildung ref:fig:torch-lottery-1 die Auswirkungen der Ticket-Suche und Reinitialisierung auf den Evaluation Loss des letztendlichen Trainingsprozesses.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
@@ -1422,10 +1401,10 @@ return 'resources/plots/torch-lottery-2.png'
 [[file:resources/plots/torch-lottery-2.png]]
 
 Bei der Wahl verschiedener Learning Raten der Modelle kann, wie in Abbildung ref:fig:torch-lottery-lr gezeigt, konstant eine effizientere
-Konvergierung erreicht werden.
-Somit bietet das Training auf einem geprunten Modell je nach Datensatz und verwendeter Modell-Architektur enormes Potential ein schnelleres und
+Konvergenz des Training/Evaluation Errors erreicht werden.
+Folglich bietet das Training auf einem geprunten Modell je nach Datensatz und verwendeter Modell-Architektur enormes Potential, ein schnelleres und
 eventuell besser generalisierendes Modell zu erhalten.
-Demnach ist es durch die Implementation des unter dieser Arbeit entwickelten Frameworks, gelungen die Ergebnisse des ursprünglichen Artikels zu reproduzieren.
+Demnach ist es durch die Implementation des unter dieser Arbeit entwickelten Frameworks gelungen, die Ergebnisse des ursprünglichen Artikels zu reproduzieren.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
 import sys
@@ -1515,16 +1494,16 @@ return 'resources/plots/torch-lottery.png'
 
 #+LABEL: fig:torch-lottery-lr
 #+CAPTION[Lottery Ticket Hypothesis und Learning Rate]: In dem hier gezeigten Diagramm wird ein identisches Modell,
-#+CAPTION: bestehend aus convolutional und dense Layern durch die in der Lottery Ticket Hypothesis Methodik optimiert.
+#+CAPTION: bestehend aus convolutional und dense Layern durch, die in der Lottery Ticket Hypothesis Methodik optimiert.
 #+CAPTION: Dabei symbolisiert jede Farbe eine Learning Rate, die für das Suchen und Trainieren des Modells gewählt wurde.
-#+CAPTION: Die gestrichelten Linien repräsentieren den jeweiligen Evaluation-Loss, des Winning Ticket Such-Prozesses.
+#+CAPTION: Die gestrichelten Linien repräsentieren den jeweiligen Evaluation-Loss des Winning Ticket Such-Prozesses.
 #+CAPTION: Die durchgezogenen Linien symbolisieren den Evaluation-Loss des Fine-Tuning Prozesses.
 #+RESULTS[dcfd136a8394c0ab1b61cdcb81c589cf1c082cc9]:
 [[file:resources/plots/torch-lottery.png]]
 
 ** Einfluss von Aktivierungs-Funktionen auf Pruning Verfahren <<activations>>
 Es lässt sich bei der Analyse von Layer-Sparsity auf neuronalen Netzen, die mit unterschiedlichen Aktivierungsfunktionen
-trainiert wurden feststellen, dass Aktivierungsfunktionen starke Auswirkungen auf die Gewichtungsverteilung der Schichten eines \acp{ANN} hat.
+trainiert wurden, feststellen, dass Aktivierungsfunktionen starke Auswirkungen auf die Gewichtungsverteilung der Schichten eines \acp{ANN} hat.
 Bei dem Betrachten der Abbildung ref:fig:activation_fn, werden die Auswirkungen der Aktivierungsfunktionen ersichtlicher.
 
 #+BEGIN_SRC python :exports results :results file :cache yes
@@ -1571,24 +1550,26 @@ return 'resources/plots/sparsity_activation.png'
 #+RESULTS[9089ef3251e99a9134f406d0e66919b42e142e2d]:
 [[file:resources/plots/sparsity_activation.png]]
 
-Eine Aktivierungsfunktion, die tendenziell eine höhere Anzahl von Gewichtungen gegen $0$ optimiert ist für ein zu
-prunenden Netzes begehrenswerter.
+Eine Aktivierungsfunktion, die tendenziell eine höhere Anzahl von Gewichtungen gegen $0$ optimiert,
+ist für ein zu prunenden Netz begehrenswerter.
 Somit gehen bei dem Pruning deutlich weniger stark gewichtete Verbindungen verloren.
-In Abbildung ref:fig:activation_fn ist in der letzten Zeile zu erkennen, dass deutlich Unterschiede bei den zu prunenden Gewichtungen zu erkennen sind.
+In Abbildung ref:fig:activation_fn ist in der letzten Zeile zu erkennen, dass deutliche Unterschiede bei den zu prunenden Gewichtungen zu erkennen sind.
 So ist es bei dem mit ~ReLU~ trainierten Netz auffällig, wie im Verhältnis die geprunten Verbindungen deutlich schwächer gewichtet sind als bei
 den anderen Netzen.
 
-Durch die in diesem Kapitel gezeigten Erkenntnisse, lässt sich empfehlen Aktivierungsfunktionen für das Training von zu prunenden \acp{ANN} zu nutzen,
-die Gewichtungen möglichst gegen $0$ zu optimieren.
+Die Erkenntnisse in diesem Kapitel zeigen, dass es empfehlenswert ist, Aktivierungsfunktionen für das Training von zu prunenden \acp{ANN} zu nutzen,
+um die Gewichtungen gegen $0$ zu optimieren.
 
-** Pruning durch Pruning Layer
+** Anwendung der One-Shot API auf allgemeinen ANN Architekturen
+Das Optimieren von bereits trainierten und öffentlich bereitgestellten neuronalen Netzen und deren Gewichtungen,
+bringt viele Herausforderungen mit sich.
+Besonders schwer lassen sich diese durch Pruning optimieren, da es sich meist um sehr optimierte (also informations-dichte) Netze handelt.
 
-** Anwendung des Pruning-Frameworks auf bekannte neuronale Netze
 #+BEGIN_SRC python :exports results :results file :cache yes
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append('./condense')
+sys.path.append('condense')
 import condense
 from condense.utils.model_utils import calc_model_sparsity
 from condense.utils.layer_utils import calc_layer_sparsity
@@ -1633,14 +1614,14 @@ return './resources/plots/resnet50_hist.png'
 #+RESULTS[78171136576c486b045dda83dae5c98ed02b5565]:
 [[file:./resources/plots/resnet50_hist.png]]
 
-*** ResNet-50 cite:altenberger18:_non_techn_survey_deep_convol
+*** ResNet-50 cite:altenberger18:_non_techn_survey_deep_convol <<resnet50_oneshot>>
 In diesem Beispiel wird ein \ac{ANN} Modell der ~ResNet-50~ cite:altenberger18:_non_techn_survey_deep_convol Architektur,
-trainiert auf dem ImageNet cite:imagenet_cvpr09 Datensatz, durch One-Shot Pruning immer stärker optimiert.
+trainiert auf dem ~ImageNet~ cite:imagenet_cvpr09 Datensatz, durch One-Shot Pruning immer stärker optimiert.
 Der dadurch resultierende Verlust von Test-Accuracy ist in Abbildung ref:fig:resnet50-one-shot-accuracy visualisiert.
 Aus dem linearen Anstieg von Accuracy-Verlust in Abhängigkeit der Ansteigen Parameter-Sparsity,
 lässt sich eine hohe Informationsdichte schlussfolgern.
-Demnach bietet sich ~ResNet-50~ nicht als Modell für Pruning Optimierungen an.
-Diese Resultate werden auch im wissenschaftlichen Artikel 'The Lottery Ticket Hypothesis' cite:Frankle2018 festgestellt.
+Demzufolge bietet sich die ~ResNet-50~ Architektur nicht besonders als Modell für Pruning Optimierungen an.
+Diese Resultate werden auch in dem wissenschaftlichen Artikel 'The Lottery Ticket Hypothesis' cite:Frankle2018 festgestellt.
 
 #+BEGIN_SRC python :results file :exports results :cache yes
 import numpy as np
@@ -1696,24 +1677,105 @@ return 'resources/plots/resnet50-one-hot.png'
 
 #+LABEL: fig:resnet50-one-shot-accuracy
 #+CAPTION[Verlust von Test-Accuracy durch One-Shot Pruning]: Verlust von Test-Accuracy durch One-Shot Pruning.
-#+ATTR_LATEX: :float wrap :width 8cm :center nil
 #+RESULTS[62cef4f7607137fd47367e4a6b6e2ef7d29e04d3]:
 [[file:resources/plots/resnet50-one-hot.png]]
 
+*** VGG16 cite:DBLP:journals/corr/SimonyanZ14a
+Ein weiteres auf ~ImageNet~ cite:imagenet_cvpr09 trainiertes neuronales Netz der ~VGG16~ Architektur cite:DBLP:journals/corr/SimonyanZ14a
+weist dieselben, in Kapitel <<resnet50_oneshot>> gefundenen Eigenschaften auf.
+Auch hier ist ein massiver Verlust von Test-Accuracy durch One-Shot Pruning festzustellen, wie Abbildung ref:fig:vgg16-os zeigen soll.
+
+#+BEGIN_SRC python :results file :exports results :cache yes
+import numpy as np
+import matplotlib.pyplot as plt
+from random import choice
+from datasets import imagenet
+from keras.applications import VGG16
+from torch.utils.data import DataLoader
+from keras.applications.vgg16 import preprocess_input
+from glob import glob
+from PIL import Image
+import keras
+import sys
+sys.path.append('condense')
+import condense
+
+DATA = '/Users/lucas/Dropbox/FH-Landshut Courses/Bachelor Arbeit/resources/datasets/imagenet/'
+def test_data_generator():
+    while True:
+        label = choice(glob(f'{DATA}*/')).split('/')[-2]
+        im = Image.open(choice(glob(f'{DATA}/{label}/*')))
+        im = im.resize((224, 224))
+        im = preprocess_input(np.asarray(im))
+        y = np.zeros((1, 1000))
+        y[0, int(label)] = 1.0
+        X = np.array([im])
+        yield X, y
+
+gen = test_data_generator()
+def evaluate(model):
+    correct = 0
+    X, y = [], []
+    for _ in range(150):
+        _X, _y = next(gen)
+        X.append(_X)
+        y.append(_y)
+    X = np.array(X).reshape(150, 224, 224, 3)
+    y = np.array(y).reshape(150, 1000)
+    return np.mean(keras.losses.categorical_crossentropy(model.predict(X), y))
+
+rang = np.arange(0, .99, .3)
+acc = [evaluate(condense.one_shot(VGG16(weights='imagenet'), acc)) for acc in rang]
+plt.figure(figsize=(8, 3))
+plt.plot(rang*100, acc)
+plt.grid()
+plt.xlabel('Sparsity Percentage')
+plt.ylabel('Model Accuracy')
+plt.title('Test-Accuracy Verlust durch One-Shot Pruning (VGG16)')
+plt.tight_layout()
+plt.savefig('resources/plots/vgg16-one-hot.png')
+return 'resources/plots/vgg16-one-hot.png'
+#+END_SRC
+
+#+LABEL: fig:vgg16-os
+#+CAPTION: ~VGG16~ Accuracy Verlust durch One-Shot Pruning.
+#+RESULTS[e01cb761bcc5a0ab4b37b9bbb4484a368df303f4]:
+[[file:resources/plots/vgg16-one-hot.png]]
+
+
 * Fazit
+
+** Evaluierung des ~condense~ Python Moduls
+Das unter dieser Arbeit entwickelte Python Modul ~condense~ erfüllt, wie in Kapitel ref:results gezeigt,
+die in Kapitel ref:ziel_framework aufgestellten Anforderungen an das Framework gänzlich.
+Einen Aspekt, den ~condense~ derzeit nicht erfüllt, ist die komprimierte Speicherung geprunter \ac{ANN} Modelle.
+Diese Funktionalität war zwar keine direkte Anforderung an das Projekt, jedoch ein wichtiger Aspekt für viele Use-Cases von \ac{ANN} Pruning.
+Es wurde im Umfang dieser Arbeit gezeigt (Kapitel ref:results), dass es mit der Hilfe von ~condense~ möglich ist,
+mit einem meist niedrigen Accuracy Verlust eine hohe Sparsity bei einem \AC{ANN} zu erzielen.
+Dabei ist die Effizienz der eingesetzten Algorithmen davon abhängig, welche \ac{ANN} Architektur
+verwendet wird und welche Informationsdichte innerhalb des Modells vorliegt.
+Zudem ist die ~condense~ Schnittstelle für die jeweiligen unterstützten Frameworks äußerst einfach zu bedienen und ohne ein umfangreiches Know-How nutzbar.
+Ebenso ist es aber durch modulares Design möglich, das Verhalten des Frameworks auf den eigenen Use-Case anzupassen.
+
+Im Laufe der Erstellung und Erprobung des Frameworks und dessen Pruning Operationen wurde deutlich,
+dass diese primär für nicht optimierte \ac{ANN} Modelle geeignet sind.
+
 ** Kapitalisierung von Sparsity in neuronalen Netzen <<kapit>>
-Aus der erhöhten Sparsity von neuronalen Netzen, lässt sich leider kein direkter Leistungsanstieg in Form von Inferenz Zeit verzeichnen.
-Herkömmliche Multiplikation von Matrizen wird nicht durch die erhöhte Sparsity beschleunigt,
-somit kann meist lediglich eine bessere Generalisierung des Modells beobachtet werden.
-Jedoch beschäftigen sich bereits viele verschiedene Teams mit der Entwicklung von Hardware und Software Lösungen um das Potential von Sparse \acp{ANN}
+Aus der erhöhten Sparsity von neuronalen Netzen lässt sich leider kein direkter Leistungsanstieg in Form von Inferenz Zeit verzeichnen.
+Herkömmliche Multiplikation von Matrizen wird nicht durch die erhöhte Sparsity beschleunigt.
+Folglich kann meist lediglich eine bessere Generalisierung des Modells beobachtet werden.
+Frameworks wie TensorFlow oder Torch bieten auf Sparse Tensoren spezialisierte Operationen,
+wie beispielsweise Matrix-Multiplikation an.
+Die Implementation für Element-Wise Matrix Multiplikation, die für die Maskierung der Tensoren benötigt wird, fehlt meist.
+Jedoch beschäftigen sich bereits viele verschiedene Teams mit der Entwicklung von Hard- und Softwarelösungen um das Potential von Sparse \acp{ANN}
 auszuschöpfen.
-So lässt sich durch spezielle Hardware Beschleuniger eine Verbesserung von Inferenz-Zeit um einen Faktor von $3.6\times$ bis $12.9\times$ erreichen cite:8735526.
+So lässt sich durch spezielle Hardware Beschleuniger eine Verbesserung der Inferenz-Zeit um einen Faktor von $3.6\times$ bis $12.9\times$ erreichen cite:8735526.
 Ob sich derartige Hardware Beschleuniger beweisen können, wird sich in Zukunft zeigen.
 
 Eine schon bestehende Software Lösung für derartige Optimierungen könnte das unter Facebook AI Entwickelte Framework ~GLOW~[fn:glow] bieten.
-Bei diesem handelt es sich um einen Compiler der \ac{ANN} Modelle direkt in Maschinen-Code übersetzen kann cite:rotem2019glow.
+Bei diesem handelt es sich um einen Compiler, der \ac{ANN} Modelle direkt in Maschinen-Code übersetzen kann cite:rotem2019glow.
 Durch das von ~GLOW~ genutzte ~LLVM~ Backend, lassen sich Optimierungen auf dem ~IR~ des Modell-Codes anwenden.
-Besonders für die Entwicklung auf Embedded Devices ist dieses Tool sehr relevant, jedoch bietet es auch äußerst viel-versprechende Optimierungen für Sparse \ac{ANN} Modelle cite:Lewis2018.
+Besonders für die Entwicklung auf Embedded Devices ist dieses Tool sehr relevant, dabei bietet es auch äußerst vielversprechende Optimierungen für Sparse \ac{ANN} Modelle cite:Lewis2018.
 
 * Ausblick
 
@@ -1727,26 +1789,29 @@ Mögliche Aufgaben für die weitere Entwicklung wären beispielsweise:
 - Weitere Ausarbeitung der Dokumentation
 - Refactoring kleinerer Teile des Moduls
 - weitere Automatisierungen
-
-Jedoch muss auch erwähnt werden, dass das Projekt auch ohne weitere Entwicklung für \ac{ML} Projekte definitiv benutzbar ist.
+ 
+Es muss jedoch darauf hingewiesen werden, dass das Projekt auch ohne eine weitere Entwicklung definitiv für \ac{ML}-Projekte benutzbar ist.
 
 ** Forschung
 Neural Network Optimierung und insbesondere Pruning ist ein sehr komplexes und unerforschtes Themengebiet und bietet dementsprechend auch
 erhebliches Potential für weitere wissenschaftliche Erkenntnisse.
 Besonders die Generierung von Parameter/Sparsity Masken bietet großes Potential für weitere Verbesserungen der Pruning-Effizienz.
-Zudem wäre es sehr interessant, weitere Tests des Pruning Frameworks auf verschiedenen evtl. nicht standard \ac{ANN} Architekturen durchzuführen.
-Eventuell können so neue Erkenntnisse über das Pruning Potential verschiedener \ac{ANN} Architekturen gesammelt werden.
+Es wäre außerdem sehr interessant, weitere Tests des Pruning Frameworks auf verschiedenen, evtl. nicht standard \ac{ANN} Architekturen durchzuführen.
+Möglicherweise können so neue Erkenntnisse über das Pruning Potential verschiedener \ac{ANN} Architekturen gesammelt werden.
 
 Besonders erwähnenswert ist die weitere Forschung im Bereich der spezialisierten Hardware.
 Wie in Kapitel ref:kapit bereits angesprochen wurde, verspricht die Verwendung von für Sparsity Tensor optimierte Hardware enormes Leistungspotential cite:8735526.
-Eventuell lässt sich auch durch spezialisierte Software Lösungen ein ähnlicher Leistungsanstieg verzeichnen.
+Womöglich lässt sich auch durch spezialisierte Software Lösungen ein ähnlicher Leistungsanstieg verzeichnen.
 
 #+LATEX: \printbibliography
 
+\appendix
+\includepdf{Quick Start.pdf}
+
 * Footnotes
 [fn:sparsity] Sparsity beschreibt die Anzahl von Feldern in einem Tensor, die einer $0$ entsprechen.
-Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes die Sparsity jedes Layers zusammen.
-[fn:tensorflow] Ein von Google entwickeltes Deep Learning Framework [[https://www.tensorflow.org][(tensorflow.org)]].
+Somit setzt sich die Sparsity eines künstlichen neuronalen Netzes aus der Sparsity eines jeden Layers des Networks zusammen.
+[fn:tensorflow] Ein von Google entwickeltes Deep-Learning Framework [[https://www.tensorflow.org][(tensorflow.org)]].
 [fn:keras] Ehemalig externes Frontend von \ac{TF}, seit \ac{TF} 2.0 fester Bestandteil des Frameworks.
 [fn:onnx] Universales Format für die Persistierung von \ac{ANN} Modellen.
 [fn:loss] Als Loss wird der allgemeine Fehler des Netztes auf einem Datensatz bezeichnet.
@@ -1770,9 +1835,9 @@ Mathematische Operationen, wie Matrix Multiplikation sind in C implementiert und
 [fn:hidden] Schichten eines Modells mit denen der Nutzer keine direkte Interaktion hat, werden als hidden bezeichnet.
 Beispielsweise wären in einem sequentiellen Modell mit $4$ Schichten, Layer $2$ und $3$ hidden.
 [fn:github] https://github.com/sirbubbls/pruning-ba
-[fn:evaluation_loss] Unter dem Evaluation Loss versteht man die Accuracy, die ein Modell auf einem Test Datensatz erzielt.
+[fn:evaluation_loss] Unter dem Evaluation-Loss versteht man die Accuracy, die ein Modell auf einem Testdatensatz erzielt.
 Dabei wurde das Modell nicht auf dem Datensatz trainiert und kennt diesen somit auch nicht.
-Meist ist der Evaluation Loss die aussage-kräftigste Metrik über die Qualität eines KI Modells.
+Meist ist der Evaluation-Loss die aussagekräftigste Metrik über die Qualität eines KI Modells.
 [fn:training_loss] Der Training-Loss eines Modells beschreibt, wie gut die Accuracy das Modells auf dem Trainings-Datensatz ist.
 [fn:glow] https://github.com/pytorch/glow
 [fn:hyperparameter] Parameter wie ~learning_rate~, die auf das Training Auswirkungen haben können.
@@ -1780,6 +1845,7 @@ Meist ist der Evaluation Loss die aussage-kräftigste Metrik über die Qualität
 [fn:pypi] https://pypi.org
 [fn:gh_condense] Das GitHub Verzeichnis des unter dieser Arbeit entwickelten Frameworks (https://github.com/sirbubbls/condense)
 [fn:pip] Package Installer for Python ~pip~ (https://pypi.org/project/pip/)
+[fn:parameter] Als Parameter eines Modells, werden alle Daten bezeichnet, die im Laufe des Trainings durch den Optimierungsalgorithmus angepasst werden.
 [fn:_]
 
 bibliography:references.bib
