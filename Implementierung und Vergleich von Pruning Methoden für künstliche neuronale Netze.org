@@ -1,21 +1,15 @@
 #+TITLE: Implementierung und Vergleich von Pruning Methoden für künstliche neuronale Netze
 #+AUTHOR: Lucas Sas Brunschier
 #+DESCRIPTION: Bachelor Arbeit
-#+DATE: 10.12.2020
+#+DATE: 26.02.2021
 #+LATEX_CLASS: report
 #+language: de
+#+LATEX_HEADER: \usepackage[a4paper, margin=1.1in]{geometry}
 #+LATEX_HEADER: \usepackage[ngerman]{babel}
-#+LATEX_HEADER: \usepackage{a4wide}
 #+LATEX_HEADER: \usepackage[backend=bibtex, style=numeric] {biblatex}
 #+LATEX_HEADER: \addbibresource{references.bib}
 #+LATEX_HEADER: \usepackage{acronym}
 #+LATEX_HEADER: \usepackage{pdfpages}
-#+LATEX_HEADER: \renewcommand\thepart{\arabic{part}}
-#+LATEX_HEADER: \let\part\chapter
-#+LATEX_HEADER: \let\chapter\section
-#+LATEX_HEADER: \let\section\subsection
-#+LATEX_HEADER: \let\subsection\subsubsection
-
 
 #+STARTUP: showall
 #+STARTUP: hideblocks
@@ -28,7 +22,7 @@
      "\\begin{titlepage}\n"
      "\\begin{center}\n"
      "\\includegraphics[width=5cm]{./resources/haw_logo.jpg}\n"
-     "\\vspace{2cm}\n"
+     "\\vspace{5cm}\n"
      "{\\par \\LARGE Hochschule für angewandte Wissenschaften Landshut}\n"
      "\\vspace{0.6cm}"
      "{\\par \\Large Fakultät Informatik} \\vspace{1.2cm}\n"
@@ -36,14 +30,17 @@
      "{\\par \\LARGE %t } \\vspace{1cm}\n"
      "{\\par \\Large \\it von %a} \\vspace{0.2cm}\n"
      "{\\par Matrikel-Nr.: 1088709} \\vspace{1cm} \n"
-     "{\\par Abgabedatum: %D} \\vspace{3cm}\n"
+     "{ Abgabedatum: 26.02.2021} \\vspace{3cm}\n"
      "\\end{center}\n"
      "{\\par Betreuer: Prof. Dr. Mona Riemenschneider}\n"
      "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
-     "\\end{titlepage}\n"))
+     "\\end{titlepage}\n"
+     "\\includepdf{BA_Erklaerung.pdf}\n"
+))
 #+end_src
 
 #+TOC: tables
+# Danksagung
 
 # Abbildungsverzeichnis
 #+BEGIN_LATEX
@@ -72,6 +69,26 @@ Durch impirische Beispiele wird gezeigt, dass sich nicht bereits optimierte Mode
 somit eine hohe Parameter Sparsity mit minimalem Accuracy Verlust des künstlichen neuronalen Netzes erzeugt werden kann.
 \end{abstract}
 #+END_ABSTRACT
+
+#+BEGIN_LATEX
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+An dieser Stelle möchte ich mich bei meinen Eltern,
+\\~\\
+Ronald Sas Brüning\\
+Helga Brunschier de Sas \\
+\\~\\
+für die langjährige Unterstützung bedanken.
+\\~\\
+\\~\\
+\\~\\
+\\~\\
+\\~\\
+\\~\\
+\end{center}
+\vspace*{\fill}
+#+END_LATEX
 
 * Einleitung
 ** Neuronale Netze
