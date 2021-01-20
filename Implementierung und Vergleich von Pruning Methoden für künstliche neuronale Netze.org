@@ -1,7 +1,7 @@
 #+TITLE: Implementierung und Vergleich von Pruning Methoden für künstliche neuronale Netze
 #+AUTHOR: Lucas Sas Brunschier
 #+DESCRIPTION: Bachelor Arbeit
-#+DATE: 26.02.2021
+#+DATE: 26.01.2021
 #+LATEX_CLASS: report
 #+language: de
 #+LATEX_HEADER: \usepackage[a4paper, margin=1.1in]{geometry}
@@ -30,7 +30,7 @@
      "{\\par \\LARGE %t } \\vspace{1cm}\n"
      "{\\par \\Large \\it von %a} \\vspace{0.2cm}\n"
      "{\\par Matrikel-Nr.: 1088709} \\vspace{1cm} \n"
-     "{ Abgabedatum: 26.02.2021} \\vspace{3cm}\n"
+     "{ Abgabedatum: 26.01.2021} \\vspace{3cm}\n"
      "\\end{center}\n"
      "{\\par Betreuer: Prof. Dr. Mona Riemenschneider}\n"
      "{\\par Zweitkorrektor: Prof. Dr. Abdelmajid Khelil}\n"
@@ -137,7 +137,7 @@ cite:10.5555/3086952
 
 *** Das Perceptron <<perceptron>>
 Ein Perceptron ist ein Modell, das eine Reihe von Eingabedaten (Inputs) $a$ auf einen gemeinsamen Output $y$ nach der Form  $\mathbb{R}^n \rightarrow \mathbb{R}$ abbildet.
-Die verschiedenen Inputs $a^n$ werden durch Gewichtungen $w^n$ verschieden stark gewichtet, also $a_1 \times w_1 + \dots + a_n \times w_n = y$ oder in Vektorschreibweise $a \times w^T = y$.
+Die verschiedenen Inputs $a_n$ werden durch Gewichtungen $w_n$ verschieden stark gewichtet, also $a_1 \times w_1 + \dots + a_n \times w_n = y$ oder in Vektorschreibweise $a \times w^T = y$.
 Auf dem heutigen Stand der Entwicklung des Deep-Learning-Frameworks enthält das Perceptron zusätzlich noch eine nicht-lineare Komponente in der Form einer Aktivierungsfunktion $\sigma$.
 Einige der häufig eingesetzten Aktivierungsfunktionen können in Tabelle ref:tab:aktivierungsfunktion gefunden werden.
 In Kapitel ref:activations dieser Arbeit, wird noch im Genaueren auf Zusammenhänge zwischen Aktivierungsfunktion und Sparsity[fn:sparsity] eines \ac{ANN} Modells eingegangen.
@@ -185,13 +185,13 @@ Differenzierung von Parametern nutzen zu können.
 *** Einführung in naive Pruning Methoden für künstliche neuronale Netze
 
 Durch die Beobachtung der künstlichen neuronalen Netze in den letzten Jahren lässt sich feststellen,
-dass die Komplexität und die damit einhergehende Anzahl von Neuronen und deren Verbindungen immer weiter zunehmen. cite:altenberger18:_non_techn_survey_deep_convol
+dass die Komplexität und die damit einhergehende Anzahl von Neuronen und deren Verbindungen immer weiter zunehmen cite:altenberger18:_non_techn_survey_deep_convol.
 Gleichzeitig werden diese komplexeren und größeren \ac{ANN} Architekturen auch auf schwächeren eingebetteten Geräten eingesetzt.
 \ac{ANN} Modelle die für selbstfahrende Autos eingesetzt werden, sollten beispielsweise eine möglichst schnelle und effiziente Ausführung bieten.
 Durch diese schnellere Ausführung kann rascher auf Gefahrensituationen reagiert werden.
 Deshalb werden Optimierungen an neuronalen Netzen immer relevanter, da dies Inferenz-Zeit und Modellgröße minimieren kann.
 Verfahren wie Quantisierung können die Laufzeit und den Speicherverbrauch von \ac{ANN}'s deutlich verbessern;
-jedoch lassen sich auch durch Pruning-Verfahren massive Verbesserungen bezüglich Laufzeit und Speicherverbrauch erzielen. cite:Frankle2018
+jedoch lassen sich auch durch Pruning-Verfahren massive Verbesserungen bezüglich Laufzeit und Speicherverbrauch erzielen cite:Frankle2018.
 Pruning-Verfahren versuchen durch das Entfernen von Verbindungen oder auch ganzen Neuronen, die Sparsity eines Modells zu erhöhen.
 Als Weight- oder auch Connection-Pruning wird ein Vorgang bezeichnet, der Verbindungen aus einem \ac{ANN} entfernt.
 Dabei werden die Verbindungen eliminiert, also mit $0$ gewichtet. Dies ist in Abbildung ref:fig:naiveweightpruning dargestellt.
